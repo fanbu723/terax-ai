@@ -1,0 +1,170 @@
+name: Desktop bundles
+
+# Builds installable desktop bundles on GitHub runners and uploads them as
+# workflow artifacts, so nobody has to install Xcode CLT, Rust or Node on a
+# workstation. The Linux container cannot produce these: a .app needs the macOS
+# SDK, and a deb/rpm/AppImage needs the bundler toolchain plus a glibc baseline.
+#
+# Runners are pinned to match the release workflow, so artifacts built here are
+# installable on the same distribution range as a real release:
+# - macOS: macos-latest (arm64) or macos-13 (x86_64, opt-in via the input)
+# - Linux: ubuntu-22.04 (glibc 2.35), x86_64
+#
+# Triggers:
+# - push a tag matching `app-v*`: builds that commit from any branch. This is
+#   the path that keeps `main` a clean mirror of upstream, because
+#   `workflow_dispatch` would require this file on the default branch.
+# - workflow_dispatch: available once this file also exists on the default
+#   branch (e.g. after merging it there or changing the fork's default branch).
+
+on:
+  push:
+    tags:
+      - "app-v*"
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "macOS runner architecture (arm64 matches Apple Silicon)"
+        type: choice
+        options: [arm64, x86_64]
+        default: arm64
+
+concurrency:
+  group: desktop-bundles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macos (${{ inputs.arch || 'arm64' }})
+    # Tag pushes carry no inputs; arm64 is the default then.
+    runs-on: ${{ inputs.arch == 'x86_64' && 'macos-13' || 'macos-latest' }}
+    permissions:
+      contents: read
+    env:
+      ARCH: ${{ inputs.arch || 'arm64' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+          key: desktop-bundles-macos-${{ env.ARCH }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Updater artifacts are minisign-signed with a private key that only the
+      # release workflow holds. A local/CI bundle skips them.
+      - name: Build the app bundle
+        run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Zip the app bundle
+        run: |
+          set -euo pipefail
+          APP=src-tauri/target/release/bundle/macos/Terax.app
+          test -d "$APP" || { echo "Terax.app missing"; exit 1; }
+          # ditto keeps the bundle structure, symlinks and executable bits.
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "Terax-${ARCH}.app.zip"
+
+      - name: Report what was built
+        run: |
+          set -euo pipefail
+          ls -lh "Terax-${ARCH}.app.zip"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            src-tauri/target/release/bundle/macos/Terax.app/Contents/Info.plist
+          stat -f '%n %z bytes' \
+            src-tauri/target/release/bundle/macos/Terax.app/Contents/MacOS/terax
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: terax-macos-${{ env.ARCH }}
+          path: |
+            Terax-${{ env.ARCH }}.app.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  linux:
+    name: linux (x86_64)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    env:
+      # linuxdeploy ships as an AppImage and the runner has no FUSE by default,
+      # so the bundler has to self-extract.
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            patchelf \
+            rpm
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+          key: desktop-bundles-linux-x86_64
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the bundles
+        run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Collect and verify packages
+        run: |
+          set -euo pipefail
+          mkdir -p linux-packages
+          for package in \
+            src-tauri/target/release/bundle/deb/*.deb \
+            src-tauri/target/release/bundle/rpm/*.rpm \
+            src-tauri/target/release/bundle/appimage/*.AppImage; do
+            test -s "$package" || { echo "missing $package"; exit 1; }
+            cp "$package" linux-packages/
+          done
+          test "$(dpkg-deb -f linux-packages/*.deb Architecture)" = "amd64"
+          test "$(rpm -qp --queryformat '%{ARCH}' linux-packages/*.rpm)" = "x86_64"
+          # The bundled CLI is a sidecar; a broken link fails here, not at runtime.
+          dpkg-deb -x linux-packages/*.deb unpacked-deb
+          unpacked-deb/usr/bin/terax-cli --help >/dev/null
+          file unpacked-deb/usr/bin/terax unpacked-deb/usr/bin/terax-cli
+          (cd linux-packages && sha256sum * > SHA256SUMS)
+
+      - name: Report what was built
+        run: |
+          set -euo pipefail
+          stat --printf='%n %s bytes\n' linux-packages/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: terax-linux-x86_64
+          path: |
+            linux-packages/*.deb
+            linux-packages/*.rpm
+            linux-packages/*.AppImage
+            linux-packages/SHA256SUMS
+          if-no-files-found: error

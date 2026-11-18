@@ -15,7 +15,8 @@
 | `cargo clippy` / `cargo nextest` | 是（容器） |
 | 打 `.deb` / `.rpm` / `.AppImage` | 是（容器，产物在 `./artifacts`） |
 | 运行 `pnpm tauri dev`（看到应用窗口） | 否 |
-| 产出 macOS `.app` / `.dmg` | 否（需要 macOS SDK）；改由 [macOS app workflow](../../.github/workflows/macos-app.yml) 在 CI 构建 |
+| 产出 macOS `.app` / `.dmg` | 否（需要 macOS SDK）；改由 [Desktop bundles workflow](../../.github/workflows/desktop-bundles.yml) 在 CI 构建 |
+| 产出 Linux `.deb` / `.rpm` / `.AppImage`（CI 路径） | 是（同一 workflow 的 `linux` job，ubuntu-22.04） |
 | 产出 Windows 安装包 | 否（需要 Windows SDK） |
 | 预览自己改动的 UI | 否（只能看已发布的版本） |
 
@@ -23,11 +24,16 @@
 起不来。macOS 宿主上的 Docker 跑的是 Linux 虚拟机，看不到窗口，这与配置无关。
 
 macOS 的 `.app` / `.dmg` 需要 macOS SDK 与平台链接器，Linux 容器物理上产不出来。
-因此这类产物走 [`.github/workflows/macos-app.yml`](../../.github/workflows/macos-app.yml)：
-在 `workflow_dispatch` 里手动触发，跑完在 run 页面下载 `terax-macos-arm64` artifact
-（内含 `Terax-<arch>.app.zip` 与 `.dmg`）。该 workflow 不需要任何签名 secrets，
-产物未签名，只适合自己本机使用。**不要在 workstation 上装工具链来绕开这一点**，
-那正是本工作流要避免的事。
+因此这类产物走 [`.github/workflows/desktop-bundles.yml`](../../.github/workflows/desktop-bundles.yml)：
+
+- `macos` job（`macos-latest` / 可选 `macos-13`）出 `Terax-<arch>.app.zip` 与 `.dmg`；
+- `linux` job（`ubuntu-22.04`，glibc 2.35）出 `.deb` / `.rpm` / `.AppImage` 与 `SHA256SUMS`，
+  与发布用的基线一致，因此宿主编译器版本不影响产物兼容性。
+
+触发方式是推送 `app-v*` 标签（`workflow_dispatch` 需要 workflow 在默认分支上才有按钮）。
+跑完在 run 页面底部 Artifacts 下载 `terax-macos-<arch>` 或 `terax-linux-x86_64`。
+该 workflow 不需要任何签名 secrets，产物未签名，只适合自己本机使用。
+**不要在 workstation 上装工具链来绕开这一点**，那正是本工作流要避免的事。
 
 ## 2. 宿主需要什么
 
