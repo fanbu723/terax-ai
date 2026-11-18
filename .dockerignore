@@ -1,0 +1,16 @@
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+node_modules
+dist
+dist-ssr
+artifacts
+stats.html
+*.log
+
+src-tauri/target
+src-tauri/gen/schemas
+src-tauri/binaries

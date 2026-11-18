@@ -22,6 +22,8 @@ pnpm tauri dev
 
 Prereqs: Rust (stable), Node 22+, pnpm, plus your platform's [Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
+Prefer not to install that toolchain locally? The frontend and Rust checks, plus the Linux bundles, also run in the [Docker build environment](docs/contributing/containerized-build.md).
+
 For the architecture and how to contribute safely, see [TERAX.md](TERAX.md) and the [docs/ index](docs/README.md).
 
 ## Where to discuss

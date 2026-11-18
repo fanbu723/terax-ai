@@ -36,3 +36,4 @@ repository and are not included in the application bundle.
 
 - [Testing](contributing/testing.md) - the testing contract, how to run checks, and what makes a good core-subsystem test.
 - [Commit conventions (中文)](contributing/commits.zh-CN.md) - commit message format, branch naming, PR titles and squash rules.
+- [Containerized build environment](contributing/containerized-build.md) - run the full toolchain (Node, pnpm, Rust, GTK/WebKit, Tauri bundler) in Docker so nothing compiles on the host.
