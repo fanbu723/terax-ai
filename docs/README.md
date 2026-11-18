@@ -35,3 +35,4 @@ repository and are not included in the application bundle.
 ## Contributing guides
 
 - [Testing](contributing/testing.md) - the testing contract, how to run checks, and what makes a good core-subsystem test.
+- [Commit conventions (中文)](contributing/commits.zh-CN.md) - commit message format, branch naming, PR titles and squash rules.
