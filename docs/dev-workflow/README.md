@@ -15,11 +15,19 @@
 | `cargo clippy` / `cargo nextest` | 是（容器） |
 | 打 `.deb` / `.rpm` / `.AppImage` | 是（容器，产物在 `./artifacts`） |
 | 运行 `pnpm tauri dev`（看到应用窗口） | 否 |
-| 产出 macOS / Windows 安装包 | 否（需要各自的 SDK） |
+| 产出 macOS `.app` / `.dmg` | 否（需要 macOS SDK）；改由 [macOS app workflow](../../.github/workflows/macos-app.yml) 在 CI 构建 |
+| 产出 Windows 安装包 | 否（需要 Windows SDK） |
 | 预览自己改动的 UI | 否（只能看已发布的版本） |
 
 容器内没有显示服务器，也没有 Wayland/X11 socket 与 GPU 直通，因此 `pnpm tauri dev`
 起不来。macOS 宿主上的 Docker 跑的是 Linux 虚拟机，看不到窗口，这与配置无关。
+
+macOS 的 `.app` / `.dmg` 需要 macOS SDK 与平台链接器，Linux 容器物理上产不出来。
+因此这类产物走 [`.github/workflows/macos-app.yml`](../../.github/workflows/macos-app.yml)：
+在 `workflow_dispatch` 里手动触发，跑完在 run 页面下载 `terax-macos-arm64` artifact
+（内含 `Terax-<arch>.app.zip` 与 `.dmg`）。该 workflow 不需要任何签名 secrets，
+产物未签名，只适合自己本机使用。**不要在 workstation 上装工具链来绕开这一点**，
+那正是本工作流要避免的事。
 
 ## 2. 宿主需要什么
 

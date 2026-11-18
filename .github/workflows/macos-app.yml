@@ -1,0 +1,79 @@
+name: macOS app
+
+# Builds an unsigned Terax.app on a macOS runner and uploads it as a workflow
+# artifact, so nobody has to install Xcode CLT, Rust or Node on a workstation.
+#
+# The Linux container deliberately cannot produce this bundle: a .app needs the
+# macOS SDK and the platform linker. That makes CI the supported path for macOS
+# artifacts, and the host stays limited to Docker, git and an editor.
+#
+# Manual only: on-demand builds do not burn runner minutes on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Runner architecture (arm64 matches Apple Silicon)"
+        type: choice
+        options: [arm64, x86_64]
+        default: arm64
+
+concurrency:
+  group: macos-app-${{ github.ref }}-${{ inputs.arch }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ inputs.arch }})
+    runs-on: ${{ inputs.arch == 'x86_64' && 'macos-13' || 'macos-latest' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+          key: macos-app-${{ inputs.arch }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Updater artifacts are minisign-signed with a private key that only the
+      # release workflow holds. A local/CI bundle skips them.
+      - name: Build the app bundle
+        run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Zip the app bundle
+        run: |
+          set -euo pipefail
+          APP=src-tauri/target/release/bundle/macos/Terax.app
+          test -d "$APP" || { echo "Terax.app missing"; exit 1; }
+          # ditto keeps the bundle structure, symlinks and executable bits.
+          ditto -c -k --sequesterRsrc --keepParent "$APP" Terax-${{ inputs.arch }}.app.zip
+
+      - name: Report what was built
+        run: |
+          set -euo pipefail
+          ls -lh Terax-${{ inputs.arch }}.app.zip
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            src-tauri/target/release/bundle/macos/Terax.app/Contents/Info.plist
+          stat -f '%n %z bytes' \
+            src-tauri/target/release/bundle/macos/Terax.app/Contents/MacOS/terax
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: terax-macos-${{ inputs.arch }}
+          path: |
+            Terax-${{ inputs.arch }}.app.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
