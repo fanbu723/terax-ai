@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import type { TFunction } from "@/i18n";
+import { useT } from "@/i18n/useT";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { setShortcuts } from "@/modules/settings/store";
 import {
@@ -19,6 +21,7 @@ import {
   SHORTCUT_GROUPS,
   SHORTCUTS,
   type Shortcut,
+  type ShortcutGroup,
   type ShortcutId,
 } from "@/modules/shortcuts/shortcuts";
 import {
@@ -31,6 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 
 export function ShortcutsSection() {
+  const t = useT();
   const userShortcuts = usePreferencesStore((s) => s.shortcuts);
   const [search, setSearch] = useState("");
   const [recordingId, setRecordingId] = useState<ShortcutId | null>(null);
@@ -43,10 +47,10 @@ export function ShortcutsSection() {
     const lower = search.toLowerCase();
     return base.filter(
       (s) =>
-        s.label.toLowerCase().includes(lower) ||
-        s.group.toLowerCase().includes(lower),
+        t(s.label).toLowerCase().includes(lower) ||
+        t(s.group).toLowerCase().includes(lower),
     );
-  }, [search]);
+  }, [search, t]);
 
   const onRecord = (id: ShortcutId, binding: KeyBinding) => {
     const next = { ...userShortcuts, [id]: [binding] };
@@ -74,8 +78,8 @@ export function ShortcutsSection() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <SectionHeader
-          title="Shortcuts"
-          description="View and customize keyboard shortcuts."
+          title={t("Shortcuts")}
+          description={t("View and customize keyboard shortcuts.")}
         />
         <Button
           variant="outline"
@@ -100,7 +104,7 @@ export function ShortcutsSection() {
           className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
         />
         <Input
-          placeholder="Search shortcuts..."
+          placeholder={t("Search shortcuts...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 pl-9 text-[12.5px]"
@@ -115,7 +119,7 @@ export function ShortcutsSection() {
           return (
             <div key={group} className="flex flex-col gap-3">
               <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                {group}
+                {shortcutGroupLabel(group, t)}
               </h3>
               <div className="flex flex-col divide-y divide-border/40 rounded-lg border border-border/60 bg-card/40 overflow-hidden">
                 {items.map((s) => (
@@ -161,6 +165,33 @@ export function ShortcutsSection() {
   );
 }
 
+/**
+ * Groups are plain string unions, so they are mapped explicitly here to keep
+ * every label a literal `t()` call the dictionary check can see.
+ */
+function shortcutGroupLabel(group: ShortcutGroup, t: TFunction): string {
+  switch (group) {
+    case "General":
+      return t("General");
+    case "Tabs":
+      return t("Tabs");
+    case "Spaces":
+      return t("Spaces");
+    case "Panes":
+      return t("Panes");
+    case "Terminal":
+      return t("Terminal");
+    case "Search":
+      return t("Search");
+    case "AI":
+      return t("AI");
+    case "View":
+      return t("View");
+    case "Editor":
+      return t("Editor");
+  }
+}
+
 function ShortcutRow({
   shortcut,
   isRecording,
@@ -180,6 +211,7 @@ function ShortcutRow({
   onReset: () => void;
   userBindings?: KeyBinding[];
 }) {
+  const t = useT();
   const bindings =
     userBindings !== undefined ? userBindings : shortcut.defaultBindings;
   const isModified = userBindings !== undefined;
@@ -188,7 +220,7 @@ function ShortcutRow({
   return (
     <div className="group flex items-center justify-between px-3 py-2.5 transition-colors hover:bg-muted/30">
       <div className="flex flex-col gap-0.5">
-        <span className="text-[12.5px] font-medium">{shortcut.label}</span>
+        <span className="text-[12.5px] font-medium">{t(shortcut.label)}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -225,7 +257,7 @@ function ShortcutRow({
                   size="icon"
                   className="size-7 text-muted-foreground hover:text-foreground"
                   onClick={onReset}
-                  title="Reset to default"
+                  title={t("Reset to default")}
                 >
                   <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={12} />
                 </Button>
@@ -235,7 +267,7 @@ function ShortcutRow({
                 size="icon"
                 className="size-7 text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={onClear}
-                title="Clear shortcut"
+                title={t("Clear shortcut")}
               >
                 <HugeiconsIcon icon={Delete02Icon} size={12} />
               </Button>

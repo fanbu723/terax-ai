@@ -1,3 +1,4 @@
+import { applyLanguagePreference } from "@/i18n/boot";
 import { create } from "zustand";
 import {
   DEFAULT_PREFERENCES,
@@ -55,11 +56,16 @@ export const usePreferencesStore = create<State>((set) => ({
         const prefs = await loadPreferences();
         set({ ...prefs, hydrated: true });
         mirrorBgFastPath(prefs.backgroundKind, prefs.backgroundImageId);
+        // Keep the stored choice authoritative on top of the boot-time mirror.
+        void applyLanguagePreference(prefs.uiLanguage);
         void onPreferencesChange((key, value) => {
           set({ [key]: value } as Partial<State>);
           if (key === "backgroundKind" || key === "backgroundImageId") {
             const s = usePreferencesStore.getState();
             mirrorBgFastPath(s.backgroundKind, s.backgroundImageId);
+          }
+          if (key === "uiLanguage") {
+            void applyLanguagePreference(value as Preferences["uiLanguage"]);
           }
         });
       } catch (e) {

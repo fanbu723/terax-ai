@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FolderGitTwoIcon, FolderTreeIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -19,11 +20,12 @@ type Props = {
 };
 
 export function SidebarRail({ activeView, onSelectView, changedCount }: Props) {
+  const t = useT();
   const items: RailItem[] = [
-    { id: "explorer", label: "Files", icon: FolderTreeIcon },
+    { id: "explorer", label: t("Files"), icon: FolderTreeIcon },
     {
       id: "source-control",
-      label: "Git",
+      label: t("Git"),
       icon: FolderGitTwoIcon,
       badge: changedCount,
     },

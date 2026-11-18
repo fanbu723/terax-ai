@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import type { ProviderInfo } from "@/modules/ai/config";
 import {
@@ -37,6 +38,7 @@ export function ProviderKeyCard({
   onClear,
   onRemove,
 }: Props) {
+  const t = useT();
   const [editing, setEditing] = useState(!currentKey);
   const [value, setValue] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -105,7 +107,7 @@ export function ProviderKeyCard({
             size="icon"
             variant="ghost"
             onClick={onRemove}
-            title="Remove provider"
+            title={t("Remove provider")}
             className="size-7 text-muted-foreground hover:text-destructive"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={1.75} />
@@ -186,7 +188,7 @@ export function ProviderKeyCard({
             size="icon"
             variant="ghost"
             onClick={() => setEditing(true)}
-            title="Replace"
+            title={t("Replace")}
             className="size-7"
           >
             <HugeiconsIcon icon={Edit02Icon} size={12} strokeWidth={1.75} />
@@ -196,7 +198,7 @@ export function ProviderKeyCard({
               size="icon"
               variant="ghost"
               onClick={() => void onClear()}
-              title="Remove"
+              title={t("Remove")}
               className="size-7 text-muted-foreground hover:text-destructive"
             >
               <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={1.75} />

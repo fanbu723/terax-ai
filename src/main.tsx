@@ -1,12 +1,13 @@
 import "./styles/globals.css";
 
+import { terminalDiagnosticsEnabled } from "@/modules/terminal/lib/terminalDiagnosticsEnabled";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import ReactDOM from "react-dom/client";
 import App from "./app/App";
+import { bootI18n } from "./i18n/boot";
 import { initLaunchDir } from "./lib/launchDir";
 import { USE_CUSTOM_WINDOW_CONTROLS } from "./lib/platform";
-import { terminalDiagnosticsEnabled } from "@/modules/terminal/lib/terminalDiagnosticsEnabled";
 
 if (USE_CUSTOM_WINDOW_CONTROLS) {
   document.documentElement.dataset.chrome = "borderless";
@@ -31,6 +32,10 @@ await invoke("pty_close_all").catch(() => {});
 
 // Seed before first paint so default tab mounts at target cwd (no flicker).
 await initLaunchDir();
+
+// Load the UI language pack before mounting so the first frame is localized
+// instead of flashing English. Reads a localStorage mirror, so no IPC wait.
+await bootI18n();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <App />,

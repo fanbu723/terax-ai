@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { SearchTarget } from "@/modules/header";
 import { MAX_PANES_PER_TAB, type Tab } from "@/modules/tabs";
 import { leafIds } from "@/modules/terminal";
@@ -87,7 +88,7 @@ export function createCommandItems(
   return [
     {
       id: "settings.open",
-      title: "Open settings",
+      title: t("Open settings"),
       group: "General",
       keywords: ["preferences", "config"],
       icon: Settings01Icon,
@@ -96,7 +97,7 @@ export function createCommandItems(
     },
     {
       id: "theme.pick",
-      title: "Change theme...",
+      title: t("Change theme..."),
       group: "General",
       keywords: ["theme", "appearance", "color", "dark", "light"],
       icon: PaintBoardIcon,
@@ -104,7 +105,7 @@ export function createCommandItems(
     },
     {
       id: "shortcuts.open",
-      title: "Keyboard shortcuts",
+      title: t("Keyboard shortcuts"),
       group: "General",
       keywords: ["keys", "keybindings", "settings"],
       icon: KeyboardIcon,
@@ -112,15 +113,22 @@ export function createCommandItems(
     },
     {
       id: "spaces.overview",
-      title: "Spaces: Overview",
+      title: t("Spaces: Overview"),
       group: "Spaces",
-      keywords: ["spaces", "sessions", "overview", "organize", "manage", "move"],
+      keywords: [
+        "spaces",
+        "sessions",
+        "overview",
+        "organize",
+        "manage",
+        "move",
+      ],
       icon: DashboardSquare01Icon,
       run: ctx.openSpacesOverview,
     },
     {
       id: "spaces.new",
-      title: "New Space",
+      title: t("New Space"),
       group: "Spaces",
       keywords: ["space", "session", "workspace", "group", "create"],
       icon: DashboardSquare01Icon,
@@ -128,17 +136,16 @@ export function createCommandItems(
     },
     ...ctx.spaces.map((sp) => ({
       id: `spaces.switch.${sp.id}`,
-      title: `Switch to ${sp.name}`,
+      title: t("Switch to {name}", { name: sp.name }),
       group: "Spaces" as const,
       keywords: ["space", "switch", "session", sp.name],
       icon: DashboardSquare01Icon,
-      disabledReason:
-        sp.id === ctx.activeSpaceId ? "Current space" : undefined,
+      disabledReason: sp.id === ctx.activeSpaceId ? "Current space" : undefined,
       run: () => ctx.switchSpace(sp.id),
     })),
     {
       id: "tab.new",
-      title: "New terminal",
+      title: t("New terminal"),
       group: "Tabs",
       keywords: ["shell", "terminal", "new tab"],
       icon: TerminalIcon,
@@ -147,7 +154,7 @@ export function createCommandItems(
     },
     {
       id: "tab.newBlock",
-      title: "New block terminal",
+      title: t("New block terminal"),
       group: "Tabs",
       keywords: ["blocks", "warp", "command blocks", "terminal"],
       icon: DashboardSquare01Icon,
@@ -155,7 +162,7 @@ export function createCommandItems(
     },
     {
       id: "tab.newPrivate",
-      title: "New private terminal",
+      title: t("New private terminal"),
       group: "Tabs",
       keywords: ["privacy", "private", "incognito", "hidden from ai"],
       icon: IncognitoIcon,
@@ -164,7 +171,7 @@ export function createCommandItems(
     },
     {
       id: "tab.newEditor",
-      title: "New editor tab",
+      title: t("New editor tab"),
       group: "Tabs",
       keywords: ["file", "editor", "create"],
       icon: FileEditIcon,
@@ -174,7 +181,7 @@ export function createCommandItems(
     },
     {
       id: "tab.newPreview",
-      title: "New web preview",
+      title: t("New web preview"),
       group: "Tabs",
       keywords: ["browser", "web", "localhost", "preview"],
       icon: Globe02Icon,
@@ -183,7 +190,7 @@ export function createCommandItems(
     },
     {
       id: "tab.close",
-      title: "Close tab or pane",
+      title: t("Close tab or pane"),
       group: "Tabs",
       keywords: ["close", "remove", "pane"],
       icon: Cancel01Icon,
@@ -193,7 +200,7 @@ export function createCommandItems(
     },
     {
       id: "pane.splitRight",
-      title: "Split pane right",
+      title: t("Split pane right"),
       group: "Panes",
       keywords: ["terminal", "pane", "split", "right", "column"],
       icon: LayoutTwoColumnIcon,
@@ -203,7 +210,7 @@ export function createCommandItems(
     },
     {
       id: "pane.splitDown",
-      title: "Split pane down",
+      title: t("Split pane down"),
       group: "Panes",
       keywords: ["terminal", "pane", "split", "down", "row"],
       icon: LayoutTwoRowIcon,
@@ -213,7 +220,7 @@ export function createCommandItems(
     },
     {
       id: "git.graph",
-      title: "Open git graph",
+      title: t("Open git graph"),
       group: "Git",
       keywords: ["git", "graph", "history", "log", "commits"],
       icon: SourceCodeIcon,
@@ -221,7 +228,7 @@ export function createCommandItems(
     },
     {
       id: "git.source",
-      title: "Toggle source control",
+      title: t("Toggle source control"),
       group: "Git",
       keywords: ["git", "source control", "changes", "staging", "diff"],
       icon: SourceCodeIcon,
@@ -230,7 +237,7 @@ export function createCommandItems(
     },
     {
       id: "search.content",
-      title: "Find content in files",
+      title: t("Find content in files"),
       group: "Search",
       keywords: ["grep", "ripgrep", "text", "contents", "search in files"],
       icon: FileSearchIcon,
@@ -239,7 +246,7 @@ export function createCommandItems(
     },
     {
       id: "history.open",
-      title: "Search command history",
+      title: t("Search command history"),
       group: "Search",
       keywords: ["history", "shell", "rerun", "previous commands"],
       icon: TerminalIcon,
@@ -248,7 +255,7 @@ export function createCommandItems(
     },
     {
       id: "search.focus",
-      title: "Find in current tab",
+      title: t("Find in current tab"),
       group: "Search",
       keywords: ["find", "terminal", "editor", "current"],
       icon: Search01Icon,
@@ -258,7 +265,7 @@ export function createCommandItems(
     },
     {
       id: "explorer.search",
-      title: "Search files by name",
+      title: t("Search files by name"),
       group: "Search",
       keywords: ["explorer", "workspace", "file", "open"],
       icon: Search01Icon,
@@ -268,7 +275,7 @@ export function createCommandItems(
     },
     {
       id: "sidebar.toggle",
-      title: "Toggle file explorer",
+      title: t("Toggle file explorer"),
       group: "View",
       keywords: ["sidebar", "files", "explorer"],
       icon: SidebarLeftIcon,
@@ -277,7 +284,7 @@ export function createCommandItems(
     },
     {
       id: "explorer.toggleHidden",
-      title: "Toggle hidden files",
+      title: t("Toggle hidden files"),
       group: "View",
       keywords: ["dotfiles", "hidden", "explorer", "gitignore", "env"],
       icon: ViewIcon,
@@ -286,7 +293,7 @@ export function createCommandItems(
     },
     {
       id: "ai.toggle",
-      title: "Toggle AI agent",
+      title: t("Toggle AI agent"),
       group: "AI",
       keywords: ["assistant", "chat", "agent"],
       icon: SparklesIcon,
@@ -295,7 +302,7 @@ export function createCommandItems(
     },
     {
       id: "ai.askSelection",
-      title: "Ask AI about selection",
+      title: t("Ask AI about selection"),
       group: "AI",
       keywords: ["selection", "explain", "assistant", "chat"],
       icon: SparklesIcon,

@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import {
   Alert02Icon,
   Cancel01Icon,
@@ -14,11 +15,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { isAllowedPreviewUrl, loopbackPreviewOrigin } from "./lib/previewUrl";
 import {
   PreviewAddressBar,
   type PreviewAddressBarHandle,
 } from "./PreviewAddressBar";
-import { isAllowedPreviewUrl, loopbackPreviewOrigin } from "./lib/previewUrl";
 
 export type PreviewPaneHandle = {
   reload: () => void;
@@ -41,6 +42,7 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
     // `nonce` is part of the iframe `key`. Bumping it remounts the iframe,
     // which is the only reliable cross-origin reload (calling
     // contentWindow.location.reload() throws on cross-origin frames).
+    const t = useT();
     const [nonce, setNonce] = useState(0);
     const [loaded, setLoaded] = useState(visible);
     const [dismissedCookieOrigin, setDismissedCookieOrigin] = useState<
@@ -152,13 +154,15 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
           }
         >
           {url && !allowed ? (
-            <p className="p-4 text-sm text-destructive">This URL cannot be loaded in preview.</p>
+            <p className="p-4 text-sm text-destructive">
+              {t("This URL cannot be loaded in preview.")}
+            </p>
           ) : url ? (
             loaded ? (
               <iframe
                 key={`${url}#${nonce}`}
                 src={url}
-                title="Preview"
+                title={t("Preview")}
                 className="h-full w-full border-0"
                 // sandbox grants the bare minimum for a dev preview: scripts,
                 // same-origin (cookies/storage for the previewed app), forms,

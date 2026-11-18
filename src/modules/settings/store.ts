@@ -1,3 +1,9 @@
+import { coerceUiLanguage, type UiLanguagePref } from "@/i18n/boot";
+import {
+  type AgentLaunchCommands,
+  DEFAULT_AGENT_LAUNCH_COMMANDS,
+  normalizeAgentLaunchCommands,
+} from "@/modules/agents/lib/launcher";
 import {
   type AutocompleteProviderId,
   type CustomEndpoint,
@@ -14,11 +20,6 @@ import {
   type SttProvider,
   WHISPERCPP_DEFAULT_BASE_URL,
 } from "@/modules/ai/config";
-import {
-  type AgentLaunchCommands,
-  DEFAULT_AGENT_LAUNCH_COMMANDS,
-  normalizeAgentLaunchCommands,
-} from "@/modules/agents/lib/launcher";
 import type { KeyBinding, ShortcutId } from "@/modules/shortcuts/shortcuts";
 import {
   coerceMacOptionAsAlt,
@@ -196,6 +197,7 @@ export type Preferences = {
   editorCustomFormatCommand: string;
   lspActivation: Record<string, LspActivation>;
   lspCustomServers: LspCustomServer[];
+  uiLanguage: UiLanguagePref;
 };
 
 export type EditorFormatter =
@@ -223,6 +225,7 @@ export type LspCustomServer = {
 };
 
 const STORE_PATH = "terax-settings.json";
+const KEY_UI_LANGUAGE = "uiLanguage";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
 const KEY_BG_KIND = "backgroundKind";
@@ -389,6 +392,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   editorCustomFormatCommand: "",
   lspActivation: {},
   lspCustomServers: [],
+  // "auto" follows the OS/webview language; an explicit value overrides it.
+  uiLanguage: "auto",
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -520,7 +525,9 @@ export async function loadPreferences(): Promise<Preferences> {
     explorerGitDecorations:
       get<boolean>(KEY_EXPLORER_GIT_DECORATIONS) ??
       DEFAULT_PREFERENCES.explorerGitDecorations,
-    terminalRenderer: coerceTerminalRenderer(get<string>(KEY_TERMINAL_RENDERER)),
+    terminalRenderer: coerceTerminalRenderer(
+      get<string>(KEY_TERMINAL_RENDERER),
+    ),
     terminalScreenReader: get<boolean>(KEY_TERMINAL_SCREEN_READER) === true,
     terminalCursorBlink:
       get<boolean>(KEY_TERMINAL_CURSOR_BLINK) ??
@@ -599,7 +606,12 @@ export async function loadPreferences(): Promise<Preferences> {
     lspCustomServers:
       get<LspCustomServer[]>(KEY_LSP_CUSTOM_SERVERS) ??
       DEFAULT_PREFERENCES.lspCustomServers,
+    uiLanguage: coerceUiLanguage(get<string>(KEY_UI_LANGUAGE)),
   };
+}
+
+export async function setUiLanguage(value: UiLanguagePref): Promise<void> {
+  await writePref(KEY_UI_LANGUAGE, value);
 }
 
 export async function setLspActivation(
@@ -852,7 +864,9 @@ const TERMINAL_FONT_WEIGHT_VALUES = new Set(["normal", "500", "600", "bold"]);
 /** Renderer for new terminals: WebGPU with WebGL fallback, WebGPU, or WebGL. */
 export type TerminalRendererSetting = "auto" | "webgpu" | "webgl";
 
-export function coerceTerminalRenderer(value: unknown): TerminalRendererSetting {
+export function coerceTerminalRenderer(
+  value: unknown,
+): TerminalRendererSetting {
   return value === "webgl" || value === "webgpu" ? value : "auto";
 }
 
@@ -997,6 +1011,7 @@ export async function onPreferencesChange(
   cb: (key: PrefKey, value: unknown) => void,
 ): Promise<UnlistenFn> {
   const map: Record<string, PrefKey> = {
+    [KEY_UI_LANGUAGE]: "uiLanguage",
     [KEY_THEME]: "theme",
     [KEY_THEME_ID]: "themeId",
     [KEY_BG_KIND]: "backgroundKind",

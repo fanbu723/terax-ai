@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/i18n/useT";
 import {
   allServers,
   detectBinary,
@@ -31,6 +32,7 @@ import { resolveLspSwitchState } from "./lspSwitchState";
 import { SettingRow } from "./SettingRow";
 
 export function LspServersGroup() {
+  const t = useT();
   const activation = usePreferencesStore((s) => s.lspActivation);
   const customServers = usePreferencesStore((s) => s.lspCustomServers);
   const [installTarget, setInstallTarget] = useState<LspPreset | null>(null);
@@ -39,7 +41,7 @@ export function LspServersGroup() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <Label>Language servers</Label>
+        <Label>{t("Language servers")}</Label>
         <AddCustomServerDialog customServers={customServers} />
       </div>
       {servers.map((server) => (
@@ -74,6 +76,7 @@ function ServerRow({
   customServers: LspCustomServer[];
   onInstall: () => void;
 }) {
+  const t = useT();
   const detected = useLspRuntimeStore((s) => s.detected[server.command]);
 
   useEffect(() => {
@@ -106,7 +109,7 @@ function ServerRow({
           type="button"
           className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
           onClick={() => void redetectBinary(server.command)}
-          title="Detect again"
+          title={t("Detect again")}
         >
           <HugeiconsIcon icon={Refresh01Icon} size={12} strokeWidth={1.75} />
         </button>
@@ -120,7 +123,7 @@ function ServerRow({
                 customServers.filter((c) => c.id !== server.id),
               );
             }}
-            title="Remove server"
+            title={t("Remove server")}
           >
             <HugeiconsIcon icon={Delete02Icon} size={12} strokeWidth={1.75} />
           </button>

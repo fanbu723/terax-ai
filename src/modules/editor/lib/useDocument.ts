@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { notifyDocumentSaved } from "@/modules/lsp";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { currentWorkspaceEnv } from "@/modules/workspace";
@@ -29,6 +30,7 @@ type Options = {
 };
 
 export function useDocument({ path, onDirtyChange }: Options) {
+  const t = useT();
   const [doc, setDoc] = useState<DocumentState>({ status: "loading" });
   const [dirty, setDirty] = useState(false);
 
@@ -84,10 +86,13 @@ export function useDocument({ path, onDirtyChange }: Options) {
       }).catch(() => null);
       if (stat && stat.mtime !== known) {
         const name = path.split(/[\\/]/).pop() ?? path;
-        toast.warning("File changed on disk", {
+        toast.warning(t("File changed on disk"), {
           id: `save-conflict:${path}`,
-          description: `${name} was modified by another program while you had unsaved changes. Overwrite to keep your version.`,
-          action: { label: "Overwrite", onClick: () => void writeToDisk() },
+          description: t(
+            "{name} was modified by another program while you had unsaved changes. Overwrite to keep your version.",
+            { name },
+          ),
+          action: { label: t("Overwrite"), onClick: () => void writeToDisk() },
         });
         return false;
       }

@@ -8,13 +8,14 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileIcon } from "@/modules/explorer/FileIcon";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import {
   getBindingTokens,
-  SHORTCUTS,
   type KeyBinding,
+  SHORTCUTS,
   type ShortcutId,
 } from "@/modules/shortcuts";
 import { listBuiltinThemes, useTheme } from "@/modules/theme";
@@ -22,8 +23,8 @@ import {
   AlertCircleIcon,
   ArrowTurnBackwardIcon,
   CommandIcon,
-  Tick02Icon,
   TerminalIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -79,6 +80,7 @@ export function CommandPalette({
   onOpenFile,
   insertCommand,
 }: Props) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [value, setValue] = useState("");
   const [page, setPage] = useState<"root" | "themes">("root");
@@ -243,7 +245,13 @@ export function CommandPalette({
       if (side) target.side = true;
       runAfterClose(() => onOpenFile(path, target));
     },
-    [fileTarget.line, fileTarget.column, onOpenFile, runAfterClose, workspaceRoot],
+    [
+      fileTarget.line,
+      fileTarget.column,
+      onOpenFile,
+      runAfterClose,
+      workspaceRoot,
+    ],
   );
 
   const runHistory = useCallback(
@@ -276,14 +284,14 @@ export function CommandPalette({
   );
 
   const placeholder = inThemes
-    ? "Search themes..."
+    ? t("Search themes...")
     : parsed.mode === "files"
-      ? "Go to file... (add :line to jump)"
+      ? t("Go to file... (add :line to jump)")
       : parsed.mode === "content"
-        ? "Find text in files..."
+        ? t("Find text in files...")
         : parsed.mode === "history"
-          ? "Search command history..."
-          : "Type a command, / for files, > for history, # to find in files";
+          ? t("Search command history...")
+          : t("Type a command, / for files, > for history, # to find in files");
 
   const showFiles = !inThemes && parsed.mode === "files";
 
@@ -309,9 +317,7 @@ export function CommandPalette({
           placeholder={placeholder}
           autoFocus
         />
-        <ScrollArea
-          className={showFiles ? "h-[372px]" : "max-h-[420px]"}
-        >
+        <ScrollArea className={showFiles ? "h-[372px]" : "max-h-[420px]"}>
           <CommandList
             className="max-h-none overflow-visible pr-3"
             onClickCapture={(e) => {
@@ -360,7 +366,7 @@ export function CommandPalette({
                   const rows = rankedCommands.filter((a) => a.group === group);
                   if (rows.length === 0) return null;
                   return (
-                    <CommandGroup key={group} heading={group}>
+                    <CommandGroup key={group} heading={t(group)}>
                       {rows.map((item) => (
                         <ActionItem
                           key={item.id}
@@ -458,17 +464,17 @@ export function CommandPalette({
               <CommandGroup heading="Search modes">
                 {MODE_HINTS.filter((hint) => hint.bases.includes(base)).map(
                   (hint) => (
-                  <CommandItem
-                    key={hint.sigil}
-                    value={`hint:${hint.sigil}`}
-                    onSelect={() => setQuery(hint.sigil)}
-                    className="text-[12.5px]"
-                  >
-                    <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
-                      {hint.sigil}
-                    </kbd>
-                    <span>{hint.label}</span>
-                  </CommandItem>
+                    <CommandItem
+                      key={hint.sigil}
+                      value={`hint:${hint.sigil}`}
+                      onSelect={() => setQuery(hint.sigil)}
+                      className="text-[12.5px]"
+                    >
+                      <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+                        {hint.sigil}
+                      </kbd>
+                      <span>{hint.label}</span>
+                    </CommandItem>
                   ),
                 )}
               </CommandGroup>
@@ -496,26 +502,22 @@ function FilesBody({
   line?: number;
   onOpen: (path: string) => void;
 }) {
+  const t = useT();
   if (!hasRoot) {
     return (
-      <CommandGroup heading="Files">
-        <StatusItem label="Open a folder to search its files" />
+      <CommandGroup heading={t("Files")}>
+        <StatusItem label={t("Open a folder to search its files")} />
       </CommandGroup>
     );
   }
   if (!query) {
     return (
-      <CommandGroup heading={rows.length > 0 ? "Recent files" : "Files"}>
+      <CommandGroup heading={rows.length > 0 ? t("Recent files") : t("Files")}>
         {rows.length === 0 ? (
-          <StatusItem label="Type a file name" />
+          <StatusItem label={t("Type a file name")} />
         ) : (
           rows.map((hit) => (
-            <FileRow
-              key={hit.path}
-              hit={hit}
-              line={line}
-              onOpen={onOpen}
-            />
+            <FileRow key={hit.path} hit={hit} line={line} onOpen={onOpen} />
           ))
         )}
       </CommandGroup>
@@ -531,12 +533,7 @@ function FilesBody({
         onRetry={search.retry}
       >
         {rows.map((hit) => (
-          <FileRow
-            key={hit.path}
-            hit={hit}
-            line={line}
-            onOpen={onOpen}
-          />
+          <FileRow key={hit.path} hit={hit} line={line} onOpen={onOpen} />
         ))}
       </AsyncBody>
     </CommandGroup>
@@ -640,7 +637,11 @@ function rankCommands(
   }
   const scored: { item: PaletteItem; s: number }[] = [];
   for (const item of items) {
-    const s = fuzzyBest(term, [item.title, item.group, ...(item.keywords ?? [])]);
+    const s = fuzzyBest(term, [
+      item.title,
+      item.group,
+      ...(item.keywords ?? []),
+    ]);
     if (s !== null) scored.push({ item, s });
   }
   scored.sort(
@@ -738,7 +739,9 @@ function StatusItem({
         />
       ) : null}
       <span
-        className={tone === "error" ? "text-destructive" : "text-muted-foreground"}
+        className={
+          tone === "error" ? "text-destructive" : "text-muted-foreground"
+        }
       >
         {label}
       </span>
@@ -747,10 +750,11 @@ function StatusItem({
 }
 
 function EmptyHint() {
+  const t = useT();
   return (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-muted-foreground">
       <HugeiconsIcon icon={CommandIcon} size={18} strokeWidth={1.5} />
-      <span>No commands found. Type ? to see search modes.</span>
+      <span>{t("No commands found. Type ? to see search modes.")}</span>
     </div>
   );
 }

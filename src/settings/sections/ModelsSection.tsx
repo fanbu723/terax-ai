@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import {
   type CustomEndpoint,
@@ -157,6 +158,7 @@ function reportPartialRemovalError(error: unknown): void {
 }
 
 export function ModelsSection() {
+  const t = useT();
   const [keys, setKeys] = useState<KeysMap | null>(null);
   const [epKeys, setEpKeys] = useState<CustomEndpointKeys>({});
   const [adding, setAdding] = useState<Set<ProviderId>>(new Set());
@@ -376,8 +378,10 @@ export function ModelsSection() {
   return (
     <div className="flex flex-col gap-7">
       <SectionHeader
-        title="Models"
-        description="Connect the providers you use. Keys live in your OS keychain and are used only by Terax."
+        title={t("Models")}
+        description={t(
+          "Connect the providers you use. Keys live in your OS keychain and are used only by Terax.",
+        )}
       />
 
       <DefaultsBlock
@@ -391,7 +395,7 @@ export function ModelsSection() {
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <Label>Providers</Label>
+          <Label>{t("Providers")}</Label>
           <AddProviderMenu
             providers={addableProviders}
             onAdd={addProvider}
@@ -575,11 +579,12 @@ function DefaultsBlock({
   keys: KeysMap;
   customEndpoints: readonly CustomEndpoint[];
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-3">
-      <Label>Defaults</Label>
+      <Label>{t("Defaults")}</Label>
       <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
-        <FieldRow label="Chat model">
+        <FieldRow label={t("Chat model")}>
           <DefaultModelPicker
             defaultModel={defaultModel}
             configuredIds={configuredIds}
@@ -678,6 +683,7 @@ function AutocompleteRow({
   configuredIds: Set<ProviderId>;
   customEndpoints: readonly CustomEndpoint[];
 }) {
+  const t = useT();
   const enabled = usePreferencesStore((s) => s.autocompleteEnabled);
   const trigger = usePreferencesStore((s) => s.autocompleteTrigger);
   const provider = usePreferencesStore((s) => s.autocompleteProvider);
@@ -752,7 +758,7 @@ function AutocompleteRow({
 
   return (
     <>
-      <FieldRow label="Autocomplete">
+      <FieldRow label={t("Autocomplete")}>
         <div className="flex flex-1 items-center gap-2">
           <Switch
             checked={enabled}
@@ -827,7 +833,7 @@ function AutocompleteRow({
         </div>
       </FieldRow>
       {enabled ? (
-        <FieldRow label="Trigger">
+        <FieldRow label={t("Trigger")}>
           <Select
             value={trigger}
             onValueChange={(v) =>
@@ -874,6 +880,7 @@ function LocalProviderCard({
   onClearKey: () => Promise<void>;
   onRemove: () => void;
 }) {
+  const t = useT();
   const {
     baseURL,
     modelId,
@@ -942,7 +949,7 @@ function LocalProviderCard({
           size="icon"
           variant="ghost"
           onClick={onRemove}
-          title="Remove provider"
+          title={t("Remove provider")}
           className="size-7 text-muted-foreground hover:text-destructive"
         >
           <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={1.75} />
@@ -955,7 +962,7 @@ function LocalProviderCard({
 
       <div className="mt-0.5 flex flex-col gap-2.5">
         {noBaseURL ? null : (
-          <FieldRow label="Base URL">
+          <FieldRow label={t("Base URL")}>
             <div className="flex flex-1 gap-1.5">
               <Input
                 value={urlDraft}
@@ -981,7 +988,7 @@ function LocalProviderCard({
           </FieldRow>
         )}
 
-        <FieldRow label="Model ID">
+        <FieldRow label={t("Model ID")}>
           <Input
             value={modelDraft}
             onChange={(e) => setModelDraft(e.target.value)}
@@ -996,7 +1003,7 @@ function LocalProviderCard({
         </FieldRow>
 
         {setContextLimit ? (
-          <FieldRow label="Context">
+          <FieldRow label={t("Context")}>
             <div className="flex flex-1 items-center gap-1.5">
               <Input
                 value={contextDraft}
@@ -1018,7 +1025,7 @@ function LocalProviderCard({
         ) : null}
 
         {supportsKey ? (
-          <FieldRow label="API key">
+          <FieldRow label={t("API key")}>
             {compatKey ? (
               <div className="flex flex-1 items-center gap-1.5">
                 <code className="flex-1 truncate rounded bg-muted/40 px-2 py-1 font-mono text-[11px] text-muted-foreground">
@@ -1028,7 +1035,7 @@ function LocalProviderCard({
                   size="icon"
                   variant="ghost"
                   onClick={() => void onClearKey()}
-                  title="Remove key"
+                  title={t("Remove key")}
                   className="size-7 text-muted-foreground hover:text-destructive"
                 >
                   <HugeiconsIcon
@@ -1044,7 +1051,9 @@ function LocalProviderCard({
                   type="password"
                   value={keyDraft}
                   onChange={(e) => setKeyDraft(e.target.value)}
-                  placeholder="Optional — leave empty for unauthenticated endpoints"
+                  placeholder={t(
+                    "Optional — leave empty for unauthenticated endpoints",
+                  )}
                   spellCheck={false}
                   className="h-8 flex-1 font-mono text-[11.5px]"
                 />
@@ -1093,6 +1102,7 @@ function CustomEndpointCard({
   onUpdate: (patch: Partial<CustomEndpoint>) => Promise<void>;
   onRemove: () => void;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(!endpoint.baseURL.trim());
   const [nameDraft, setNameDraft] = useState(endpoint.name);
   const [urlDraft, setUrlDraft] = useState(endpoint.baseURL);
@@ -1170,7 +1180,7 @@ function CustomEndpointCard({
             e.stopPropagation();
             onRemove();
           }}
-          title="Remove endpoint"
+          title={t("Remove endpoint")}
           className="ml-auto size-7 text-muted-foreground hover:text-destructive"
         >
           <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={1.75} />
@@ -1179,7 +1189,7 @@ function CustomEndpointCard({
 
       {expanded && (
         <div className="flex flex-col gap-2.5 border-t border-border/40 px-3 py-2.5">
-          <FieldRow label="Name">
+          <FieldRow label={t("Name")}>
             <Input
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
@@ -1193,7 +1203,7 @@ function CustomEndpointCard({
             />
           </FieldRow>
 
-          <FieldRow label="Base URL">
+          <FieldRow label={t("Base URL")}>
             <div className="flex flex-1 gap-1.5">
               <Input
                 value={urlDraft}
@@ -1218,7 +1228,7 @@ function CustomEndpointCard({
             </div>
           </FieldRow>
 
-          <FieldRow label="Model ID">
+          <FieldRow label={t("Model ID")}>
             <Input
               value={modelDraft}
               onChange={(e) => setModelDraft(e.target.value)}
@@ -1232,7 +1242,7 @@ function CustomEndpointCard({
             />
           </FieldRow>
 
-          <FieldRow label="Context">
+          <FieldRow label={t("Context")}>
             <div className="flex flex-1 items-center gap-1.5">
               <Input
                 value={contextDraft}
@@ -1253,7 +1263,7 @@ function CustomEndpointCard({
             </div>
           </FieldRow>
 
-          <FieldRow label="API key">
+          <FieldRow label={t("API key")}>
             {endpointKey ? (
               <div className="flex flex-1 items-center gap-1.5">
                 <code className="flex-1 truncate rounded bg-muted/40 px-2 py-1 font-mono text-[11px] text-muted-foreground">
@@ -1263,7 +1273,7 @@ function CustomEndpointCard({
                   size="icon"
                   variant="ghost"
                   onClick={() => void onClearKey()}
-                  title="Remove key"
+                  title={t("Remove key")}
                   className="size-7 text-muted-foreground hover:text-destructive"
                 >
                   <HugeiconsIcon
@@ -1279,7 +1289,9 @@ function CustomEndpointCard({
                   type="password"
                   value={keyDraft}
                   onChange={(e) => setKeyDraft(e.target.value)}
-                  placeholder="Optional — leave empty for unauthenticated endpoints"
+                  placeholder={t(
+                    "Optional — leave empty for unauthenticated endpoints",
+                  )}
                   spellCheck={false}
                   className="h-8 flex-1 font-mono text-[11.5px]"
                 />
@@ -1351,6 +1363,7 @@ function StatusLine({
 }
 
 function VoiceBlock() {
+  const t = useT();
   const sttProvider = usePreferencesStore((s) => s.sttProvider);
   const groqSttModel = usePreferencesStore((s) => s.groqSttModel);
   const whispercppBaseURL = usePreferencesStore((s) => s.whispercppBaseURL);
@@ -1367,7 +1380,7 @@ function VoiceBlock() {
         <span className="text-[12.5px] font-medium">Voice input</span>
       </div>
 
-      <FieldRow label="Provider">
+      <FieldRow label={t("Provider")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -1411,7 +1424,7 @@ function VoiceBlock() {
 
       {sttProvider === "groq" && (
         <div className="flex flex-col gap-2.5">
-          <FieldRow label="Model">
+          <FieldRow label={t("Model")}>
             <Input
               value={groqModelDraft}
               onChange={(e) => setGroqModelDraft(e.target.value)}
@@ -1429,7 +1442,7 @@ function VoiceBlock() {
 
       {sttProvider === "whispercpp" && (
         <div className="flex flex-col gap-2.5">
-          <FieldRow label="Base URL">
+          <FieldRow label={t("Base URL")}>
             <Input
               value={urlDraft}
               onChange={(e) => setUrlDraft(e.target.value)}

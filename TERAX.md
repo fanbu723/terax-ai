@@ -472,6 +472,14 @@ BYOK. Cloud providers via `@ai-sdk/*`: **OpenAI, Anthropic, Google, xAI, Cerebra
 - Shell init scripts: gate Unix-only logic behind `#[cfg(unix)]`; Windows arm in `pty::shell_init::windows`.
 - Terminal input: send `\r` (CR) for Enter, not `\n` (LF) - PowerShell on Windows requires CR.
 
+### UI localization
+
+- New user-facing copy goes through `t()` from `src/i18n`: `const t = useT()` in components, the bare `t` import in non-React modules. Keys are the English source string, so an untranslated string simply renders in English.
+- `src/i18n/locales/<locale>.ts` is loaded by `await import()` only. Never import a locale pack statically: it would join the startup graph and break the `size-limit` and `dist-budget` gates.
+- Both window entries call `await bootI18n()` before `createRoot`; the resolved language is mirrored into `localStorage` so the first frame is already localized and no IPC roundtrip is needed.
+- The language preference (`uiLanguage`: `auto` | `en` | `zh-CN`) rides the existing `writePref` / `terax://prefs-changed` path, so a change in the settings window repaints the main window.
+- `pnpm i18n:check` fails on stale dictionary entries (no matching `t()` call) and on typographic em dashes in translated values; untranslated strings are reported only so a locale can land incrementally.
+
 ### Bundle config
 
 - `bundle.targets: "all"` plus per-platform sections in `tauri.conf.json`:

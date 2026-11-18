@@ -20,6 +20,9 @@ vi.mock("react", async (original) => ({
     return [state.slots[index], state.setters[index]];
   },
   useEffect: () => {},
+  // The i18n hook subscribes through this; the test renders components as
+  // plain functions, so there is no dispatcher to subscribe to.
+  useSyncExternalStore: () => "en",
 }));
 vi.mock("react/compiler-runtime", () => ({
   c: (n: number) => Array(n).fill(Symbol.for("react.memo_cache_sentinel")),
@@ -72,6 +75,7 @@ vi.mock("./EditorSection", () => ({ EditorSection: () => null }));
 vi.mock("./GeneralSection", () => ({ GeneralSection: () => null }));
 vi.mock("./ShortcutsSection", () => ({ ShortcutsSection: () => null }));
 vi.mock("./ThemesSection", () => ({ ThemesSection: () => null }));
+
 import { ModelsSection } from "./ModelsSection";
 
 function card(
