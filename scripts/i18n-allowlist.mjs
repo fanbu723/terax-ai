@@ -100,6 +100,11 @@ export const ALLOWED_SOURCE_PATTERNS = [
 ];
 
 export const ALLOWED_LATIN_TOKENS = [
+  "JetBrains",
+  "Inter",
+  "CN",
+  "NF",
+  "Maple",
   // Brands and technical nouns from the policy doc.
   "AI",
   "API",

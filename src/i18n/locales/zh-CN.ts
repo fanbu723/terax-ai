@@ -100,9 +100,13 @@ export default {
   "Restore window position & size": "恢复窗口位置与大小",
   "Reopen the main window where you left it. Applies on next launch.":
     "在退出时的位置重新打开主窗口。下次启动生效。",
-  "Font family": "字体",
-  'Terminal font (e.g. "CaskaydiaCove Nerd Font Mono"). Icons render without a Nerd Font; leave blank to use an installed one when found.':
-    '终端字体（例如 "CaskaydiaCove Nerd Font Mono"）。没有 Nerd Font 时图标仍可显示；留空则自动使用已安装的字体。',
+  Fonts: "字体",
+  "Interface font": "界面字体",
+  "Menus, buttons and settings. Leave blank to use Maple Mono NF CN when installed, otherwise Inter.":
+    "菜单、按钮与设置界面使用的字体。留空时若已安装 Maple Mono NF CN 则使用它，否则使用 Inter。",
+  "Terminal & editor font": "终端与编辑器字体",
+  'Terminal, editor and code font (e.g. "CaskaydiaCove Nerd Font Mono"). Leave blank to auto-detect an installed Nerd Font (Maple Mono NF CN first), otherwise JetBrains Mono.':
+    '终端、编辑器与代码使用的字体（例如 “CaskaydiaCove Nerd Font Mono”）。留空时自动检测已安装的 Nerd Font（优先 Maple Mono NF CN），否则使用内置 JetBrains Mono。',
   "Auto-detect": "自动检测",
   System: "系统",
   Light: "浅色",

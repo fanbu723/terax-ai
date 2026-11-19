@@ -1,4 +1,3 @@
-import { detectMonoFontFamily } from "@/lib/fonts";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
@@ -168,14 +167,14 @@ const chrome = EditorView.theme({
     },
     "& ul, & ol": { margin: "4px 0", paddingLeft: "18px" },
     "& code": {
-      fontFamily: detectMonoFontFamily(),
+      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
       fontSize: "11px",
       backgroundColor: "color-mix(in srgb, var(--muted) 70%, transparent)",
       borderRadius: "4px",
       padding: "1px 4px",
     },
     "& pre": {
-      fontFamily: detectMonoFontFamily(),
+      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
       fontSize: "11px",
       backgroundColor: "color-mix(in srgb, var(--muted) 70%, transparent)",
       border: "1px solid color-mix(in srgb, var(--border) 60%, transparent)",
@@ -194,7 +193,7 @@ const chrome = EditorView.theme({
   ".cm-tooltip.cm-tooltip-autocomplete": {
     padding: "4px",
     "& > ul": {
-      fontFamily: detectMonoFontFamily(),
+      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
       fontSize: "12px",
       maxHeight: "246px",
       minWidth: "220px",
@@ -290,7 +289,7 @@ const chrome = EditorView.theme({
   },
   ".cm-panel.cm-search br": { display: "none" },
   ".cm-panel .cm-textfield": {
-    fontFamily: detectMonoFontFamily(),
+    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
     fontSize: "12px",
     backgroundColor: "color-mix(in srgb, var(--muted) 50%, transparent)",
     color: "var(--foreground)",
@@ -355,7 +354,7 @@ const chrome = EditorView.theme({
   },
   ".cm-lsp-rename-input": {
     flex: "1",
-    fontFamily: detectMonoFontFamily(),
+    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
     fontSize: "12px",
     backgroundColor: "color-mix(in srgb, var(--muted) 50%, transparent)",
     color: "var(--foreground)",
@@ -369,7 +368,7 @@ const chrome = EditorView.theme({
   },
 
   ".cm-lsp-locations": {
-    fontFamily: detectMonoFontFamily(),
+    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
     fontSize: "12px",
     backgroundColor: "var(--popover)",
     color: "var(--popover-foreground)",

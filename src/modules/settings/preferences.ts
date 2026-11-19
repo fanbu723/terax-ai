@@ -1,4 +1,5 @@
 import { applyLanguagePreference } from "@/i18n/boot";
+import { applyAppFonts } from "@/lib/appFonts";
 import { create } from "zustand";
 import {
   DEFAULT_PREFERENCES,
@@ -56,6 +57,7 @@ export const usePreferencesStore = create<State>((set) => ({
         const prefs = await loadPreferences();
         set({ ...prefs, hydrated: true });
         mirrorBgFastPath(prefs.backgroundKind, prefs.backgroundImageId);
+        applyAppFonts(prefs);
         // Keep the stored choice authoritative on top of the boot-time mirror.
         void applyLanguagePreference(prefs.uiLanguage);
         void onPreferencesChange((key, value) => {
@@ -66,6 +68,9 @@ export const usePreferencesStore = create<State>((set) => ({
           }
           if (key === "uiLanguage") {
             void applyLanguagePreference(value as Preferences["uiLanguage"]);
+          }
+          if (key === "uiFontFamily" || key === "terminalFontFamily") {
+            applyAppFonts(usePreferencesStore.getState());
           }
         });
       } catch (e) {
