@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { RiskCode, RiskLevel } from "../lib/risk";
 import { native } from "../lib/native";
 import { pendingApprovalIds } from "../lib/pendingApprovals";
+import { useDshTargetStore } from "../dsh/target";
 import { checkReadable } from "../lib/security";
 import { resolvePath } from "../tools/tools";
 import {
@@ -118,8 +119,12 @@ function Bridge({ sessionId, openAiDiffTab, closeAiDiffTab }: BridgeProps) {
   }, [status, approvalsPending, approvalIds, patch]);
 
   useEffect(() => {
-    if (approvalsPending > 0) openMini();
-  }, [approvalsPending, openMini]);
+    if (approvalsPending === 0) return;
+    // An approval for the built-in agent must win over the DSH console view;
+    // otherwise the card would render inside a hidden Terax chat.
+    useDshTargetStore.getState().setTarget(sessionId, "terax");
+    openMini();
+  }, [approvalsPending, openMini, sessionId]);
 
   // ---- AI diff tab management ----------------------------------------------
   // We track which approvalIds have already opened a tab so re-renders don't

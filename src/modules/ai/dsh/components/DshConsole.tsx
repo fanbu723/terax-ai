@@ -697,7 +697,8 @@ function ConnectionBar({ chatSessionId }: { chatSessionId: string }) {
           {t("DSH not connected")}
         </span>
       )}
-      {connStatus === "error" && connLogs.length > 0 ? (
+      {(connStatus === "error" || connStatus === "connecting") &&
+      connLogs.length > 0 ? (
         <details className="w-full text-[9.5px] text-muted-foreground">
           <summary className="cursor-pointer select-none">
             {t("Show log")}
@@ -909,7 +910,10 @@ export const DshConsole = memo(function DshConsole({
             <PermissionCard pending={pendingPermission} />
           ) : null}
           {pendingElicitation ? (
-            <ElicitationCard pending={pendingElicitation} />
+            <ElicitationCard
+              key={pendingElicitation.key}
+              pending={pendingElicitation}
+            />
           ) : null}
         </div>
       ) : null}

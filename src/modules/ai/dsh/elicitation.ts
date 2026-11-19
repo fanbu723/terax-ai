@@ -188,7 +188,7 @@ export function buildElicitationContent(
         }
         continue;
       }
-      const parsed = field.integer ? Number.parseInt(text, 10) : Number(text);
+      const parsed = Number(text);
       if (!Number.isFinite(parsed) || (field.integer && !Number.isInteger(parsed))) {
         return { ok: false, field: field.name, reason: "invalid" };
       }
