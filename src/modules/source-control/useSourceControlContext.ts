@@ -24,6 +24,8 @@ type Params = {
   sidebarCollapsed: boolean;
   /** The `explorerGitDecorations` preference. */
   explorerGitDecorations: boolean;
+  /** The active workspace is an SSH space: source control stays off. */
+  remote: boolean;
   repositoryTarget: SourceControlRepositoryTarget;
   cycleSidebarView: (view: SidebarViewId) => void;
   openCommitHistoryTab: (args: {
@@ -48,6 +50,7 @@ export function useSourceControlContext({
   sidebarView,
   sidebarCollapsed,
   explorerGitDecorations,
+  remote,
   repositoryTarget,
   cycleSidebarView,
   openCommitHistoryTab,
@@ -97,13 +100,20 @@ export function useSourceControlContext({
       explorerGitDecorations,
     }),
   );
-  const sourceControl = useSourceControl(sourceControlPath, true, { live });
+  const sourceControl = useSourceControl(
+    remote ? null : sourceControlPath,
+    true,
+    {
+      live: live && !remote,
+    },
+  );
 
   const toggleSourceControl = useCallback(() => {
     cycleSidebarView("source-control");
   }, [cycleSidebarView]);
 
   const openGitGraphFromContext = useCallback(async () => {
+    if (remote) return;
     // A snapshot nobody is refreshing may predate a branch switch or a cd, so
     // only a live one is trusted; otherwise resolve the repo afresh below.
     const known = live && sourceControl.hasRepo ? sourceControl.repo : null;
@@ -134,6 +144,7 @@ export function useSourceControlContext({
     live,
     graphContextPath,
     repositoryTarget,
+    remote,
     sidebarView,
   ]);
 

@@ -68,11 +68,24 @@ function recordCrash(key: string): void {
   crashTimes.set(key, times);
 }
 
+let warnedSshWorkspace = false;
+
+/** One notice per session; the status bar has no LSP pill in a remote space. */
+function noticeSshWorkspace(): void {
+  if (warnedSshWorkspace) return;
+  warnedSshWorkspace = true;
+  toast.info(t("Language servers are not available for SSH workspaces yet."));
+}
+
 export async function acquireDocExtension(
   path: string,
   langId: string,
 ): Promise<LspDocHandle | null> {
-  if (currentWorkspaceEnv().kind !== "local") return null;
+  const env = currentWorkspaceEnv();
+  if (env.kind !== "local") {
+    if (env.kind === "ssh") noticeSshWorkspace();
+    return null;
+  }
   const prefs = usePreferencesStore.getState();
   const preset = serverForLanguage(
     langId,

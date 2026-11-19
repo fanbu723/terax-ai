@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
         payload: { id: number; kind: string; agent?: string };
       }) => void),
   listen: vi.fn(),
+  workspace: null as unknown,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -33,7 +34,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 vi.mock("@/modules/workspace", () => ({
-  currentWorkspaceEnv: () => null,
+  currentWorkspaceEnv: () => mocks.workspace,
 }));
 
 // The bridge owns a process-wide hub, so every test gets a fresh module graph.
@@ -107,6 +108,7 @@ describe("PTY bridge over the multiplexed stream", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     requests.length = 0;
+    mocks.workspace = null;
     mocks.invoke.mockReset();
     stubNative();
   });
@@ -186,6 +188,18 @@ describe("PTY bridge over the multiplexed stream", () => {
     expect(open).not.toHaveProperty("onData");
     expect(open).not.toHaveProperty("onExit");
     expect(commands).not.toContain("pty_ack_output");
+  });
+
+  it("carries the SSH workspace env on pty_open", async () => {
+    mocks.workspace = { kind: "ssh", hostId: "host-1" };
+    const { openPty } = await load();
+    nativeInvoke();
+    const session = await openPty(80, 24, { onData: vi.fn() });
+    expect(openArguments().workspace).toEqual({
+      kind: "ssh",
+      hostId: "host-1",
+    });
+    await session.close();
   });
 
   it("starts the output stream by announcing the terminal on the first poll", async () => {

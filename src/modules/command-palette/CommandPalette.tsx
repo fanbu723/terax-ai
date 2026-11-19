@@ -654,6 +654,8 @@ function commandGroupLabel(group: string, t: TFunction): string {
       // "AI" reads the same in Chinese; wrapping it would need an identical
       // dictionary value, so the heading keeps the bare term.
       return group;
+    case "Remote":
+      return t("Remote");
     default:
       return group;
   }

@@ -2,6 +2,7 @@ import { t } from "@/i18n";
 import type { SearchTarget } from "@/modules/header";
 import { MAX_PANES_PER_TAB, type Tab } from "@/modules/tabs";
 import { leafIds } from "@/modules/terminal";
+import { currentWorkspaceEnv } from "@/modules/workspace";
 import {
   Cancel01Icon,
   DashboardSquare01Icon,
@@ -14,6 +15,7 @@ import {
   LayoutTwoRowIcon,
   PaintBoardIcon,
   Search01Icon,
+  ServerStack03Icon,
   Settings01Icon,
   SidebarLeftIcon,
   SourceCodeIcon,
@@ -32,6 +34,7 @@ export const COMMAND_GROUPS = [
   "Search",
   "View",
   "AI",
+  "Remote",
 ] as const;
 
 export type CommandPaletteActionContext = {
@@ -63,6 +66,11 @@ export type CommandPaletteActionContext = {
   openSpacesOverview: () => void;
   newSpace: () => void;
   switchSpace: (id: string) => void;
+  remoteHostCount: number;
+  remoteBackendAvailable: boolean;
+  openRemoteConnect: () => void;
+  openRemoteSpace: () => void;
+  openRemoteManageHosts: () => void;
 };
 
 const noop = () => {};
@@ -84,6 +92,16 @@ export function createCommandItems(
       : undefined;
   const closeDisabled =
     onlyOneTab && activePaneCount < 2 ? t("Last tab") : undefined;
+  const remoteBackendDisabled = ctx.remoteBackendAvailable
+    ? undefined
+    : t("SSH is not available in this build.");
+  const remoteConnectDisabled =
+    remoteBackendDisabled ??
+    (ctx.remoteHostCount === 0 ? t("No SSH hosts") : undefined);
+  const sshWorkspace = currentWorkspaceEnv().kind === "ssh";
+  const searchUnavailable = sshWorkspace
+    ? t("Search is not available for SSH workspaces yet.")
+    : undefined;
 
   return [
     {
@@ -243,6 +261,7 @@ export function createCommandItems(
       keywords: ["grep", "ripgrep", "text", "contents", "search in files"],
       icon: FileSearchIcon,
       trailing: "#",
+      disabledReason: searchUnavailable,
       run: noop,
     },
     {
@@ -271,7 +290,9 @@ export function createCommandItems(
       keywords: ["explorer", "workspace", "file", "open"],
       icon: Search01Icon,
       shortcutId: "explorer.search",
-      disabledReason: ctx.explorerRoot ? undefined : t("No workspace root"),
+      disabledReason:
+        searchUnavailable ??
+        (ctx.explorerRoot ? undefined : t("No workspace root")),
       run: ctx.focusExplorerSearch,
     },
     {
@@ -309,6 +330,33 @@ export function createCommandItems(
       icon: SparklesIcon,
       shortcutId: "ai.askSelection",
       run: ctx.askAiSelection,
+    },
+    {
+      id: "remote.connect",
+      title: t("Remote: Connect to Host..."),
+      group: "Remote",
+      keywords: ["ssh", "remote", "connect", "server", "host"],
+      icon: ServerStack03Icon,
+      disabledReason: remoteConnectDisabled,
+      run: ctx.openRemoteConnect,
+    },
+    {
+      id: "remote.newSpace",
+      title: t("Remote: New Remote Space..."),
+      group: "Remote",
+      keywords: ["ssh", "remote", "space", "folder", "workspace"],
+      icon: ServerStack03Icon,
+      disabledReason: remoteConnectDisabled,
+      run: ctx.openRemoteSpace,
+    },
+    {
+      id: "remote.manageHosts",
+      title: t("Remote: Manage Hosts..."),
+      group: "Remote",
+      keywords: ["ssh", "remote", "hosts", "manage", "server"],
+      icon: ServerStack03Icon,
+      disabledReason: remoteBackendDisabled,
+      run: ctx.openRemoteManageHosts,
     },
   ];
 }

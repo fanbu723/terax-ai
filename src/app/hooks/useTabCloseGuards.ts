@@ -6,6 +6,7 @@ import {
   evaluateCloseHazards,
   hasCloseManyHazards,
   hasNewCloseManyHazards,
+  terminalCloseNeedsConfirmation,
 } from "@/app/hooks/tabCloseGuards";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import {
@@ -16,6 +17,7 @@ import {
   type Tab,
 } from "@/modules/tabs";
 import { leafHasForegroundProcess, leafIds } from "@/modules/terminal";
+import { currentWorkspaceEnv, isRemoteEnv } from "@/modules/workspace";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 function confirmRunningTerminal(): boolean {
@@ -71,9 +73,17 @@ export function useTabCloseGuards({
         return;
       }
       if (t?.kind === "terminal" && confirmRunningTerminal()) {
-        const leaves = leafIds(t.paneTree);
-        const checks = await Promise.all(leaves.map(leafHasForegroundProcess));
-        if (checks.some(Boolean)) {
+        // The remote side cannot be inspected (the local child is the ssh
+        // client), so an SSH tab is treated as busy without probing.
+        const remote = isRemoteEnv(currentWorkspaceEnv());
+        const busy = remote
+          ? false
+          : (
+              await Promise.all(
+                leafIds(t.paneTree).map(leafHasForegroundProcess),
+              )
+            ).some(Boolean);
+        if (terminalCloseNeedsConfirmation(remote, true, busy)) {
           setPendingTerminalCloseTab(id);
           return;
         }
@@ -102,6 +112,7 @@ export function useTabCloseGuards({
         () => captureCloseMany(closeIds),
         leafHasForegroundProcess,
         confirmRunningTerminal(),
+        isRemoteEnv(currentWorkspaceEnv()),
       ),
     [captureCloseMany],
   );

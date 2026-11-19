@@ -1,6 +1,10 @@
+import { t } from "@/i18n";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useWorkspaceEnvStore, workspaceScopeKey } from "@/modules/workspace";
+
+let warnedRemoteAssets = false;
 
 /** A view grants only its displayed file or Markdown image directory. */
 export function useAssetGrant(path: string | null) {
@@ -15,6 +19,21 @@ export function useAssetGrant(path: string | null) {
   } | null>(null);
   useEffect(() => {
     if (!path) return;
+    // Remote assets are not served yet; never touch the local asset protocol
+    // with an SSH path.
+    if (workspace.kind === "ssh") {
+      if (!warnedRemoteAssets) {
+        warnedRemoteAssets = true;
+        toast.info(
+          t("File previews are not supported for SSH workspaces yet."),
+        );
+      }
+      setGrant({
+        key,
+        error: t("Preview is not available for SSH workspaces."),
+      });
+      return;
+    }
     let disposed = false;
     let token: string | null = null;
     const revoke = (value: string) =>

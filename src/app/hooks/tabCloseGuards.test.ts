@@ -10,6 +10,7 @@ import {
   pathAtOrUnder,
   renamedPath,
   spacesEmptiedByTabs,
+  terminalCloseNeedsConfirmation,
 } from "./tabCloseGuards";
 import type { EditorTab, MarkdownTab } from "@/modules/tabs";
 
@@ -191,5 +192,36 @@ describe("evaluateCloseHazards", () => {
     };
     const result = await evaluateCloseHazards(capture, async () => false, true);
     expect(result).toEqual(hazards([], [last]));
+  });
+});
+
+describe("remote terminal close", () => {
+  it("confirms an SSH tab even when no local process is detected", () => {
+    expect(terminalCloseNeedsConfirmation(true, true, false)).toBe(true);
+    expect(terminalCloseNeedsConfirmation(true, true, true)).toBe(true);
+    expect(terminalCloseNeedsConfirmation(false, true, false)).toBe(false);
+    expect(terminalCloseNeedsConfirmation(false, true, true)).toBe(true);
+  });
+
+  it("respects the opt-out for SSH tabs", () => {
+    expect(terminalCloseNeedsConfirmation(true, false, false)).toBe(false);
+  });
+
+  it("reports every leaf busy for a remote workspace without probing", async () => {
+    const isBusy = vi.fn(async () => false);
+    const capture = () => ({ dirtyIds: [2], leafIds: [20, 30] });
+    await expect(
+      evaluateCloseHazards(capture, isBusy, true, true),
+    ).resolves.toEqual(hazards([2], [20, 30]));
+    expect(isBusy).not.toHaveBeenCalled();
+  });
+
+  it("returns no busy leaves for a remote workspace when the user opted out", async () => {
+    const isBusy = vi.fn(async () => true);
+    const capture = () => ({ dirtyIds: [2], leafIds: [20] });
+    await expect(
+      evaluateCloseHazards(capture, isBusy, false, true),
+    ).resolves.toEqual(hazards([2], []));
+    expect(isBusy).not.toHaveBeenCalled();
   });
 });

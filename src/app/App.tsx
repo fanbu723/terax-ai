@@ -54,6 +54,11 @@ import {
 } from "@/modules/header";
 import { setLspNavigator } from "@/modules/lsp";
 import type { PreviewPaneHandle } from "@/modules/preview";
+import {
+  authorizeRemoteRoot,
+  useRemoteUi,
+  useSshHosts,
+} from "@/modules/remote";
 import { openSettingsWindow } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { setShowHidden } from "@/modules/settings/store";
@@ -77,6 +82,7 @@ import {
   useSourceControlContext,
 } from "@/modules/source-control";
 import {
+  resolveSpaceEnv,
   SpaceSwitcher,
   useSpacePersistence,
   useSpaces,
@@ -248,6 +254,11 @@ export default function App() {
   const workspaceEnv = useWorkspaceEnvStore((s) => s.env);
   const setWorkspaceEnv = useWorkspaceEnvStore((s) => s.setEnv);
   const {
+    hostCount: remoteHostCount,
+    backendAvailable: remoteBackendAvailable,
+    dialogHost: remoteDialogHost,
+  } = useRemoteUi();
+  const {
     home,
     launchCwd,
     launchCwdResolved,
@@ -309,19 +320,49 @@ export default function App() {
     const meta = useSpaces
       .getState()
       .spaces.find((s) => s.id === activeSpaceId);
-    if (meta) void adoptWorkspaceEnv(meta.env);
     const inSpace = tabsRef.current.filter((t) => t.spaceId === activeSpaceId);
-    if (inSpace.length === 0) return;
     // Keep the active tab if it already belongs to the newly active space (a
     // cross-space jump set it explicitly); else fall to the space's last tab.
-    if (inSpace.some((t) => t.id === activeId)) return;
-    setActiveId(inSpace[inSpace.length - 1].id);
+    if (inSpace.some((t) => t.id === activeId) && !meta) return;
+    void (async () => {
+      const nextEnv = meta
+        ? resolveSpaceEnv(meta, useSshHosts.getState().hosts)
+        : null;
+      if (nextEnv && meta && nextEnv.kind !== meta.env.kind) {
+        useSpaces.getState().setEnv(meta.id, nextEnv);
+      }
+      const nextHome = nextEnv ? await adoptWorkspaceEnv(nextEnv) : null;
+      if (nextEnv?.kind === "ssh" && meta?.root) {
+        // Native roots are in-memory: a space first visited this session needs
+        // its root authorized before the explorer or editor touches it.
+        await Promise.allSettled([
+          authorizeRemoteRoot(nextEnv.hostId, meta.root),
+        ]);
+      }
+      const remaining = tabsRef.current.filter(
+        (t) => t.spaceId === activeSpaceId,
+      );
+      if (remaining.some((t) => t.id === activeId)) return;
+      if (remaining.length === 0) {
+        // A remote space created from the dialog has no tabs yet: open one at
+        // its remote home so the space never shows an empty surface.
+        if (nextEnv?.kind !== "ssh") return;
+        const tabId = newTabInSpace(
+          activeSpaceId,
+          nextHome ?? meta?.root ?? undefined,
+        );
+        setActiveId(tabId);
+        return;
+      }
+      setActiveId(remaining[remaining.length - 1].id);
+    })();
   }, [
     activeSpaceId,
     activeId,
     spacesHydrated,
     setActiveSpaceForNewTabs,
     setActiveId,
+    newTabInSpace,
     adoptWorkspaceEnv,
   ]);
 
@@ -836,6 +877,7 @@ export default function App() {
       sidebarView,
       sidebarCollapsed,
       explorerGitDecorations,
+      remote: workspaceEnv.kind === "ssh",
       repositoryTarget: sourceControlRepositoryTarget,
       cycleSidebarView,
       openCommitHistoryTab,
@@ -843,6 +885,10 @@ export default function App() {
 
   const openPreviewTab = useCallback(
     (url: string) => {
+      if (workspaceEnv.kind === "ssh") {
+        toast.info(t("Web preview is not supported for SSH workspaces yet."));
+        return null;
+      }
       const id = newPreviewTab(url);
       // Focus the address bar if the URL is empty so the user can type.
       if (!url) {
@@ -850,7 +896,7 @@ export default function App() {
       }
       return id;
     },
-    [newPreviewTab],
+    [newPreviewTab, workspaceEnv],
   );
 
   const splitActivePaneInActiveTab = useCallback(
@@ -1310,6 +1356,20 @@ export default function App() {
             openSpacesOverview: () => setSwitcherOpen(true),
             newSpace: () => void handleNewSpace(),
             switchSpace: (id) => useSpaces.getState().setActive(id),
+            remoteHostCount,
+            remoteBackendAvailable,
+            openRemoteConnect: () =>
+              void import("@/modules/remote").then((m) =>
+                m.openRemoteHostManager("connect"),
+              ),
+            openRemoteSpace: () =>
+              void import("@/modules/remote").then((m) =>
+                m.openRemoteSpaceDialog(),
+              ),
+            openRemoteManageHosts: () =>
+              void import("@/modules/remote").then((m) =>
+                m.openRemoteHostManager("manage"),
+              ),
           })
         : [],
     [
@@ -1334,6 +1394,8 @@ export default function App() {
       activeSpaceId,
       handleNewSpace,
       locale,
+      remoteHostCount,
+      remoteBackendAvailable,
     ],
   );
 
@@ -1544,6 +1606,7 @@ export default function App() {
                           onFollowRepositoryContext={
                             handleFollowRepositoryContext
                           }
+                          remote={workspaceEnv.kind === "ssh"}
                         />
                       )}
                     </div>
@@ -1667,6 +1730,8 @@ export default function App() {
             insertCommand={insertHistoryCommand}
           />
 
+          {remoteDialogHost}
+
           <NewEditorDialog
             open={newEditorOpen}
             onOpenChange={setNewEditorOpen}
@@ -1694,6 +1759,7 @@ export default function App() {
             pendingAppClose={pendingAppClose}
             onCancelAppClose={cancelAppClose}
             onConfirmAppClose={confirmAppClose}
+            remoteTerminal={workspaceEnv.kind === "ssh"}
           />
         </div>
       </TooltipProvider>

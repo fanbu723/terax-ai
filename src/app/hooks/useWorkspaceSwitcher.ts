@@ -3,6 +3,7 @@ import { native } from "@/modules/ai/lib/native";
 import type { Tab } from "@/modules/tabs";
 import {
   getWslHome,
+  sshHome,
   LOCAL_WORKSPACE,
   type WorkspaceEnv,
 } from "@/modules/workspace";
@@ -10,9 +11,22 @@ import { homeDir } from "@tauri-apps/api/path";
 import { type RefObject, useCallback, useEffect, useState } from "react";
 
 async function resolveEnvHome(env: WorkspaceEnv): Promise<string> {
-  return env.kind === "wsl"
-    ? getWslHome(env.distro)
-    : (await homeDir()).replace(/\\/g, "/");
+  switch (env.kind) {
+    case "wsl":
+      return getWslHome(env.distro);
+    case "ssh":
+      return sshHome(env.hostId);
+    default:
+      return (await homeDir()).replace(/\\/g, "/");
+  }
+}
+
+/** Explicit per-kind equality; a WSL distro and an SSH host both pin identity. */
+export function sameWorkspaceEnv(a: WorkspaceEnv, b: WorkspaceEnv): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "wsl" && b.kind === "wsl") return a.distro === b.distro;
+  if (a.kind === "ssh" && b.kind === "ssh") return a.hostId === b.hostId;
+  return true;
 }
 
 type Params = {
@@ -62,25 +76,25 @@ export function useWorkspaceSwitcher({
       .finally(() => setLaunchCwdResolved(true));
   }, []);
 
-  const authorizeHome = useCallback(async (nextHome: string) => {
-    setHome(nextHome);
-    setLaunchCwd(nextHome);
-    try {
-      await native.workspaceAuthorize(nextHome);
-    } catch {
-      // Non-fatal — git panel will surface "not authorized" if needed.
-    }
-  }, []);
+  const authorizeHome = useCallback(
+    async (env: WorkspaceEnv, nextHome: string) => {
+      setHome(nextHome);
+      setLaunchCwd(nextHome);
+      // SSH roots are authorized per space by `ssh_authorize_root`; running the
+      // local registry against a remote path would be the wrong machine's auth.
+      if (env.kind === "ssh") return;
+      try {
+        await native.workspaceAuthorize(nextHome);
+      } catch {
+        // Non-fatal, the git panel will surface "not authorized" if needed.
+      }
+    },
+    [],
+  );
 
   const switchWorkspace = useCallback(
     async (env: WorkspaceEnv): Promise<boolean> => {
-      if (
-        env.kind === workspaceEnv.kind &&
-        (env.kind === "local" ||
-          (workspaceEnv.kind === "wsl" && env.distro === workspaceEnv.distro))
-      ) {
-        return false;
-      }
+      if (sameWorkspaceEnv(env, workspaceEnv)) return false;
       const dirty = tabsRef.current.some((t) => t.kind === "editor" && t.dirty);
       if (dirty) {
         window.alert(
@@ -99,7 +113,7 @@ export function useWorkspaceSwitcher({
 
       clearWorkspaceState();
       setWorkspaceEnv(env.kind === "local" ? LOCAL_WORKSPACE : env);
-      await authorizeHome(nextHome);
+      await authorizeHome(env, nextHome);
       resetWorkspace(nextHome);
       return true;
     },
@@ -122,7 +136,7 @@ export function useWorkspaceSwitcher({
       } catch {
         return null;
       }
-      await authorizeHome(nextHome);
+      await authorizeHome(env, nextHome);
       return nextHome;
     },
     [setWorkspaceEnv, authorizeHome],

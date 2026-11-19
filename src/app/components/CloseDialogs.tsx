@@ -39,6 +39,8 @@ type Props = {
   pendingAppClose: AppCloseBlocker | null;
   onCancelAppClose: () => void;
   onConfirmAppClose: () => void;
+  /** The active workspace is SSH: remote job state cannot be inspected. */
+  remoteTerminal: boolean;
 };
 
 function appCloseMessage(blocker: AppCloseBlocker, t: TFunction): string {
@@ -180,6 +182,7 @@ export function CloseDialogs({
   pendingAppClose,
   onCancelAppClose,
   onConfirmAppClose,
+  remoteTerminal,
 }: Props) {
   const t = useT();
   const [optOutTerminalClose, setOptOutTerminalClose] = useState(false);
@@ -251,7 +254,13 @@ export function CloseDialogs({
           <AlertDialogHeader>
             <AlertDialogTitle>{t("Close Terminal?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("A process is running. Closing this tab will terminate it.")}
+              {remoteTerminal
+                ? t(
+                    "Remote job status is unknown. Closing this tab ends the SSH session and any job running in it.",
+                  )
+                : t(
+                    "A process is running. Closing this tab will terminate it.",
+                  )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <OptOutRow
@@ -323,6 +332,11 @@ export function CloseDialogs({
               {pendingCloseMany
                 ? closeManyMessage(pendingCloseMany, tabs, t)
                 : ""}
+              {remoteTerminal &&
+              pendingCloseMany &&
+              pendingCloseMany.busyLeafIds.length > 0
+                ? ` ${t("Remote job status is unknown; closing ends the SSH session.")}`
+                : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

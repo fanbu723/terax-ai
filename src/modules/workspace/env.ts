@@ -4,7 +4,8 @@ import { setLastWslDistro } from "@/modules/settings/store";
 
 export type WorkspaceEnv =
   | { kind: "local" }
-  | { kind: "wsl"; distro: string };
+  | { kind: "wsl"; distro: string }
+  | { kind: "ssh"; hostId: string };
 
 export type WslDistro = {
   name: string;
@@ -49,14 +50,36 @@ export function currentWorkspaceEnv(): WorkspaceEnv {
   return useWorkspaceEnvStore.getState().env;
 }
 
+/**
+ * True only for SSH, where files and shells live on another machine. WSL stays
+ * a local-process environment: search, git, formatters and language servers all
+ * work against it today.
+ */
+export function isRemoteEnv(env: WorkspaceEnv): boolean {
+  return env.kind === "ssh";
+}
+
 export function workspaceScopeKey(env: WorkspaceEnv): string {
-  return env.kind === "wsl" ? `wsl:${env.distro}` : "local";
+  switch (env.kind) {
+    case "wsl":
+      return `wsl:${env.distro}`;
+    case "ssh":
+      return `ssh:${env.hostId}`;
+    default:
+      return "local";
+  }
 }
 
 export function parseWorkspaceScopeKey(key: string): WorkspaceEnv {
-  return key.startsWith("wsl:")
-    ? { kind: "wsl", distro: key.slice("wsl:".length) }
-    : LOCAL_WORKSPACE;
+  if (key.startsWith("wsl:")) {
+    const distro = key.slice("wsl:".length);
+    return distro ? { kind: "wsl", distro } : LOCAL_WORKSPACE;
+  }
+  if (key.startsWith("ssh:")) {
+    const hostId = key.slice("ssh:".length);
+    return hostId ? { kind: "ssh", hostId } : LOCAL_WORKSPACE;
+  }
+  return LOCAL_WORKSPACE;
 }
 
 export function currentWorkspaceScopeKey(): string {
@@ -65,4 +88,9 @@ export function currentWorkspaceScopeKey(): string {
 
 export async function getWslHome(distro: string): Promise<string> {
   return invoke<string>("wsl_home", { distro });
+}
+
+/** Remote `$HOME` of an SSH host, resolved by the backend over the transport. */
+export async function sshHome(hostId: string): Promise<string> {
+  return invoke<string>("ssh_home", { id: hostId });
 }

@@ -11,13 +11,14 @@ import {
   InformationCircleIcon,
   KeyboardIcon,
   PaintBoardIcon,
+  ServerStack03Icon,
   Settings01Icon,
   SourceCodeIcon,
   UserMultiple02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { type JSX, useEffect, useState } from "react";
+import { lazy, Suspense, type JSX, useEffect, useState } from "react";
 import { AboutSection } from "./sections/AboutSection";
 import { AgentsSection } from "./sections/AgentsSection";
 import { EditorSection } from "./sections/EditorSection";
@@ -25,6 +26,22 @@ import { GeneralSection } from "./sections/GeneralSection";
 import { ModelsSection } from "./sections/ModelsSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { ThemesSection } from "./sections/ThemesSection";
+
+// The remote tab pulls in host management and dialogs; load the section on
+// first visit so the settings startup graph stays as small as before.
+const RemoteSection = lazy(() =>
+  import("./sections/RemoteSection").then((m) => ({
+    default: m.RemoteSection,
+  })),
+);
+
+function RemoteSectionEntry() {
+  return (
+    <Suspense fallback={null}>
+      <RemoteSection />
+    </Suspense>
+  );
+}
 
 const TABS: {
   id: SettingsTab;
@@ -64,6 +81,12 @@ const TABS: {
     component: AgentsSection,
   },
   {
+    id: "remote",
+    label: "Remote",
+    icon: ServerStack03Icon,
+    component: RemoteSectionEntry,
+  },
+  {
     id: "about",
     label: "About",
     icon: InformationCircleIcon,
@@ -78,6 +101,7 @@ const VALID_TABS: SettingsTab[] = [
   "shortcuts",
   "models",
   "agents",
+  "remote",
   "about",
 ];
 

@@ -36,6 +36,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { ExplorerSearch, type ExplorerSearchHandle } from "./ExplorerSearch";
 import { FileIcon, FolderIcon } from "./FileIcon";
 import { InlineInput } from "./InlineInput";
@@ -240,16 +241,18 @@ export const FileExplorer = memo(
       active: visible,
     });
     const gitDecorations = usePreferencesStore((s) => s.explorerGitDecorations);
+    const workspace = useWorkspaceEnvStore((s) => s.env);
+    const sshWorkspace = workspace.kind === "ssh";
+    const showGit = gitDecorations && !sshWorkspace;
     const { lookup: lookupGitStatus } = useGitStatus(
       rootPath,
-      gitDecorations ? gitStatus : null,
-      gitDecorations,
+      showGit ? gitStatus : null,
+      showGit,
     );
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(
       () => new Set(),
     );
     const [anchorPath, setAnchorPath] = useState<string | null>(null);
-    const workspace = useWorkspaceEnvStore((s) => s.env);
     const pasteBusyRef = useRef(false);
     const pasteScopeRef = useRef({ rootPath, workspace });
     const [pastedSelection, setPastedSelection] = useState<{
@@ -491,6 +494,19 @@ export const FileExplorer = memo(
       collapseSelectionTo,
     ]);
 
+    const openSearch = useCallback(() => {
+      if (sshWorkspace) {
+        toast.info(t("Search is not available for SSH workspaces yet."));
+        return;
+      }
+      setIsSearchOpen(true);
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }, [sshWorkspace, t]);
+
+    useLayoutEffect(() => {
+      if (sshWorkspace) setIsSearchOpen(false);
+    }, [sshWorkspace]);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -508,12 +524,9 @@ export const FileExplorer = memo(
           const active = document.activeElement;
           return active instanceof Node && c.contains(active);
         },
-        focusSearch: () => {
-          setIsSearchOpen(true);
-          searchRef.current?.focus();
-        },
+        focusSearch: openSearch,
       }),
-      [entryPaths, scrollEntryIntoView, collapseSelectionTo],
+      [entryPaths, scrollEntryIntoView, collapseSelectionTo, openSearch],
     );
 
     useGlobalShortcuts({
@@ -522,8 +535,7 @@ export const FileExplorer = memo(
           setIsSearchOpen(false);
           return;
         }
-        setIsSearchOpen(true);
-        searchRef.current?.focus();
+        openSearch();
       },
     });
 
@@ -652,8 +664,8 @@ export const FileExplorer = memo(
               multiSelectActive={selectedPaths.size > 1}
               onOpenFile={onOpenFile}
               onSelectPath={handleEntrySelect}
-              gitStatusCode={row.gitStatusCode}
-              gitignored={gitDecorations && row.gitignored}
+              gitStatusCode={showGit ? row.gitStatusCode : null}
+              gitignored={showGit && row.gitignored}
             />
           );
         }
@@ -702,8 +714,15 @@ export const FileExplorer = memo(
             variant="ghost"
             size="icon"
             className="size-6 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsSearchOpen((v) => !v)}
-            title={t("Search files")}
+            onClick={() => {
+              if (isSearchOpen) setIsSearchOpen(false);
+              else openSearch();
+            }}
+            title={
+              sshWorkspace
+                ? t("Search is not available for SSH workspaces yet.")
+                : t("Search files")
+            }
             aria-label={t("Search files")}
           >
             <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={2} />

@@ -103,6 +103,8 @@ type Props = {
   onNavigateToPath?: (path: string) => void;
   repositoryTarget: SourceControlRepositoryTarget;
   onFollowRepositoryContext: () => void;
+  /** The active workspace is an SSH space: git never runs here. */
+  remote?: boolean;
 };
 
 const SOURCE_CONTROL_TOOLTIP_CLASS =
@@ -393,6 +395,7 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   onNavigateToPath,
   repositoryTarget,
   onFollowRepositoryContext,
+  remote = false,
 }: Props) {
   const t = useT();
   const locale = useLocale();
@@ -674,6 +677,22 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   );
 
   if (!open) return null;
+
+  if (remote) {
+    return (
+      <aside className="flex h-full min-w-0 flex-col items-center justify-center gap-2 p-6 text-center">
+        <HugeiconsIcon
+          icon={Alert02Icon}
+          size={22}
+          strokeWidth={1.5}
+          className="text-muted-foreground"
+        />
+        <span className="text-[12px] text-muted-foreground">
+          {t("Source control is not available for SSH workspaces yet.")}
+        </span>
+      </aside>
+    );
+  }
 
   const fetchBusy = sourceControl.busyAction === "fetch";
   const pullBusy = sourceControl.busyAction === "pull";

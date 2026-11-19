@@ -205,8 +205,12 @@ export const ALLOWED_LATIN_TOKENS = [
   "Mistral",
   "Mocha",
   "Ollama",
+  // Remote development: SSH, OpenSSH and POSIX are protocol and path-format
+  // names that stay Latin in Chinese copy.
+  "OpenSSH",
   "OpenRouter",
   "Opus",
+  "POSIX",
   "Prettier",
   "SSH",
   "Schoonover",

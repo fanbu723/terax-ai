@@ -1407,4 +1407,120 @@ export default {
   "This will revert all your custom keyboard shortcuts to their factory defaults. This action cannot be undone.":
     "这将把所有自定义键盘快捷键恢复为出厂默认值。此操作无法撤销。",
   Unassigned: "未分配",
+
+  // Remote SSH
+  "Absolute POSIX path on the remote machine.": "远程机器上的绝对 POSIX 路径。",
+  "Add SSH host": "添加 SSH 主机",
+  "Add host": "添加主机",
+  "Add, edit and test SSH targets. Spaces pin one host each.":
+    "添加、编辑并测试 SSH 目标。每个空间固定使用一台主机。",
+  "Authentication is required. Open a terminal tab and authenticate once, then test again.":
+    "需要身份验证。请打开一个终端标签页并完成一次认证，然后重新测试。",
+  "Choose an SSH host": "选择 SSH 主机",
+  "Choose an SSH host first.": "请先选择 SSH 主机。",
+  Connect: "连接",
+  "Connect to SSH host": "连接到 SSH 主机",
+  "Connect to a remote machine over SSH. Leave optional fields empty to use the OpenSSH defaults.":
+    "通过 SSH 连接到远程机器。可选字段留空即使用 OpenSSH 的默认值。",
+  "Connected.": "已连接。",
+  "Connected. Home directory: {home}": "已连接。主目录：{home}",
+  "Connection test failed.": "连接测试失败。",
+  "Create a remote space from the status bar or the command palette. Source control, search and language servers stay local for now.":
+    "可从状态栏或命令面板创建远程空间。源代码管理、搜索与语言服务器目前仅在本地可用。",
+  "Create space": "创建空间",
+  "Default folder": "默认文件夹",
+  "Display name": "显示名称",
+  "Display name is required.": "显示名称为必填项。",
+  "Display name is too long.": "显示名称过长。",
+  "Edit SSH host": "编辑 SSH 主机",
+  "Edit host": "编辑主机",
+  "File previews are not supported for SSH workspaces yet.":
+    "SSH 工作区暂不支持文件预览。",
+  Host: "主机",
+  "Host cannot contain spaces or line breaks.": "主机不能包含空格或换行。",
+  "Host contains characters that are not valid in a target.":
+    "主机包含目标中不允许的字符。",
+  "Host cannot start with a dash.": "主机不能以短横线开头。",
+  "Host is too long.": "主机名过长。",
+  "Host is required.": "主机为必填项。",
+  "Host is unreachable.": "主机无法访问。",
+  "Host removed": "主机已移除",
+  "Hosts are stored by the native backend and shared with every window.":
+    "主机由原生后端保存，并在所有窗口间共享。",
+  "Identity file": "身份文件",
+  "Identity file cannot contain line breaks.": "身份文件路径不能包含换行。",
+  "Identity file must be an absolute path or start with ~/.":
+    "身份文件必须使用绝对路径或以 ~/ 开头。",
+  "Language servers are not available for SSH workspaces yet.":
+    "SSH 工作区暂不支持语言服务器。",
+  "Loading SSH hosts...": "正在加载 SSH 主机...",
+  "Manage hosts...": "管理主机...",
+  "New remote space": "新建远程空间",
+  "New remote space...": "新建远程空间...",
+  "No SSH hosts": "没有 SSH 主机",
+  "No SSH hosts yet. Add one to connect.":
+    "还没有 SSH 主机。添加一台即可连接。",
+  "Not tested yet": "尚未测试",
+  "Open a remote folder over SSH. The folder must be authorized before the space can read or write it.":
+    "通过 SSH 打开远程文件夹。空间必须先获得该文件夹的授权才能读写。",
+  "Open a terminal tab and authenticate once, then test again.":
+    "打开一个终端标签页并完成一次认证，然后重新测试。",
+  "OpenSSH was not found on this machine. Install an SSH client and try again.":
+    "未在本机找到 OpenSSH。请安装 SSH 客户端后重试。",
+  "Pick a host to open a remote space. A terminal tab can authenticate once when the host needs it.":
+    "选择一台主机以打开远程空间。主机需要认证时可先打开终端标签页完成一次认证。",
+  Port: "端口",
+  "Put the user in the user field, not in the host.":
+    "请把用户名填到用户字段，而不是主机字段。",
+  "Port must be a whole number between 1 and 65535.":
+    "端口必须是 1 到 65535 之间的整数。",
+  "Preview is not available for SSH workspaces.": "SSH 工作区无法使用预览。",
+  Reconnect: "重新连接",
+  Remote: "远程",
+  "Remote folder": "远程文件夹",
+  "Remote folder cannot contain line breaks.": "远程文件夹路径不能包含换行。",
+  "Remote folder cannot escape the root directory.":
+    "远程文件夹不能越过根目录。",
+  "Remote folder is authorized.": "远程文件夹已授权。",
+  "Remote folder is required.": "远程文件夹为必填项。",
+  "Remote folder must be an absolute path such as /home/me/project.":
+    "远程文件夹必须是绝对路径，例如以 / 开头的目录。",
+  "Remote shell": "远程 Shell",
+  "Remote shell cannot contain line breaks.": "远程 Shell 不能包含换行。",
+  "Remote shell must be an absolute path.": "远程 Shell 必须使用绝对路径。",
+  "Remote space created.": "远程空间已创建。",
+  "Remote user name": "远程用户名",
+  "Remote job status is unknown. Closing this tab ends the SSH session and any job running in it.":
+    "远程任务状态未知。关闭此标签页会结束 SSH 会话以及其中正在运行的任何任务。",
+  "Remote job status is unknown; closing ends the SSH session.":
+    "远程任务状态未知，关闭会结束 SSH 会话。",
+  "Remote: Connect to Host...": "远程：连接到主机...",
+  "Remote: Manage Hosts...": "远程：管理主机...",
+  "Remote: New Remote Space...": "远程：新建远程空间...",
+  "Remove SSH host {label}? Spaces using it fall back to local.":
+    "移除 SSH 主机 {label}？使用它的空间将回退到本地。",
+  "Remove host": "移除主机",
+  "SSH host": "SSH 主机",
+  "SSH hosts": "SSH 主机",
+  "SSH hosts for remote development. Spaces pin one host and an authorized remote folder.":
+    "用于远程开发的 SSH 主机。每个空间固定使用一台主机和一个已授权的远程文件夹。",
+  "SSH is not available in this build.": "此版本不支持 SSH。",
+  "Search is not available for SSH workspaces yet.": "SSH 工作区暂不支持搜索。",
+  "Source control is not available for SSH workspaces yet.":
+    "SSH 工作区暂不支持源代码管理。",
+  "Test and authorize": "测试并授权",
+  "Test connection": "测试连接",
+  "Testing connection...": "正在测试连接...",
+  "Testing saves this host first.": "测试前会先保存此主机。",
+  "Testing...": "测试中...",
+  "The host key is not trusted. Open a terminal tab and accept the key once, then test again.":
+    "主机密钥未受信任。请打开一个终端标签页并接受一次该密钥，然后重新测试。",
+  "User name cannot start with a dash.": "用户名不能以短横线开头。",
+  "User names may only contain letters, numbers, dots, dashes and underscores.":
+    "用户名只能包含字母、数字、点、短横线和下划线。",
+  User: "用户",
+  "Web preview is not supported for SSH workspaces yet.":
+    "SSH 工作区暂不支持网页预览。",
+  "Work server": "工作服务器",
+  "example.com or an SSH config alias": "主机名或 SSH 配置别名",
 } as const;

@@ -1,6 +1,11 @@
 import type { WorkspaceEnv } from "@/modules/workspace";
 import { describe, expect, it } from "vitest";
-import { activeSpaceEnv, findActiveSpace, freshTabCwd } from "./activeSpace";
+import {
+  activeSpaceEnv,
+  findActiveSpace,
+  freshTabCwd,
+  resolveSpaceEnv,
+} from "./activeSpace";
 import type { SpaceMeta } from "./store";
 
 function space(over: Partial<SpaceMeta>): SpaceMeta {
@@ -55,6 +60,43 @@ describe("activeSpaceEnv", () => {
   it("defaults to local when there are no spaces", () => {
     expect(activeSpaceEnv([], "a")).toEqual({ kind: "local" });
   });
+
+  it("restores an SSH space env", () => {
+    const spaces = [space({ id: "a", env: { kind: "ssh", hostId: "h1" } })];
+    expect(activeSpaceEnv(spaces, "a")).toEqual({
+      kind: "ssh",
+      hostId: "h1",
+    });
+  });
+});
+
+describe("resolveSpaceEnv", () => {
+  it("keeps an SSH env while its host exists", () => {
+    expect(
+      resolveSpaceEnv(space({ env: { kind: "ssh", hostId: "h1" } }), [
+        { id: "h1" },
+      ]),
+    ).toEqual({ kind: "ssh", hostId: "h1" });
+  });
+
+  it("degrades to local when the host was removed", () => {
+    expect(
+      resolveSpaceEnv(space({ env: { kind: "ssh", hostId: "gone" } }), [
+        { id: "h1" },
+      ]),
+    ).toEqual({ kind: "local" });
+  });
+
+  it("leaves local and WSL envs untouched regardless of hosts", () => {
+    expect(resolveSpaceEnv(space({}), [])).toEqual({ kind: "local" });
+    expect(
+      resolveSpaceEnv(space({ env: { kind: "wsl", distro: "Ubuntu" } }), []),
+    ).toEqual({ kind: "wsl", distro: "Ubuntu" });
+  });
+
+  it("defaults to local for a missing space", () => {
+    expect(resolveSpaceEnv(null, [{ id: "h1" }])).toEqual({ kind: "local" });
+  });
 });
 
 describe("freshTabCwd", () => {
@@ -69,6 +111,12 @@ describe("freshTabCwd", () => {
 
   it("returns null for a WSL space when its home did not resolve", () => {
     expect(freshTabCwd(wsl, null, "C:/Users/me", "C:/Users/me")).toBeNull();
+  });
+
+  it("returns null for an SSH space when its home did not resolve", () => {
+    expect(
+      freshTabCwd({ kind: "ssh", hostId: "h1" }, null, "/local", "/local"),
+    ).toBeNull();
   });
 
   it("falls back to the local launch cwd then home for a local space", () => {

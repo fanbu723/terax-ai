@@ -99,20 +99,40 @@ function sameIds(a: number[], b: number[]): boolean {
 }
 
 /**
+ * SSH tabs cannot be probed: the local PTY child is the ssh client, so
+ * `pty_has_foreground_process` never sees the remote job. A remote tab always
+ * goes through the confirmation (unless the user opted out) instead of closing
+ * silently.
+ */
+export function terminalCloseNeedsConfirmation(
+  remote: boolean,
+  confirmRunningTerminal: boolean,
+  processRunning: boolean,
+): boolean {
+  return confirmRunningTerminal && (remote || processRunning);
+}
+
+/**
  * Busy detection costs one IPC per leaf, so opting out skips it outright rather
  * than running it and discarding the answer. Dirty editors are never gated:
  * killing a process is what the user asked for, losing a buffer is not.
  *
  * Leaves can appear or vanish while the checks are in flight, so re-snapshot
- * until the set is stable, then fall back to assuming every leaf is busy.
+ * until the set is stable, then fall back to assuming every leaf is busy. A
+ * remote workspace skips the IPC entirely and reports every leaf busy, because
+ * the host cannot inspect the remote side.
  */
 export async function evaluateCloseHazards(
   capture: () => CloseHazardSnapshot,
   isBusy: (leafId: number) => Promise<boolean>,
   confirmRunningTerminal: boolean,
+  remote = false,
 ): Promise<CloseManyHazards> {
   if (!confirmRunningTerminal) {
     return { dirtyIds: capture().dirtyIds, busyLeafIds: [] };
+  }
+  if (remote) {
+    return { dirtyIds: capture().dirtyIds, busyLeafIds: capture().leafIds };
   }
   let checkedLeafIds = capture().leafIds;
   for (let pass = 0; pass < MAX_HAZARD_PASSES; pass += 1) {

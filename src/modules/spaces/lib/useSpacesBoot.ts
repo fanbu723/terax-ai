@@ -1,11 +1,12 @@
 import { native } from "@/modules/ai/lib/native";
+import { authorizeRemoteRoot, useSshHosts } from "@/modules/remote";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { Tab } from "@/modules/tabs";
 import { DEFAULT_SPACE_ID } from "@/modules/tabs/lib/useTabs";
 import { isLeaf, type PaneNode } from "@/modules/terminal/lib/panes";
 import { parseWorkspaceScopeKey, type WorkspaceEnv } from "@/modules/workspace";
 import { useEffect, useRef } from "react";
-import { activeSpaceEnv, freshTabCwd } from "./activeSpace";
+import { findActiveSpace, freshTabCwd, resolveSpaceEnv } from "./activeSpace";
 import { freshTerminalTab, hydrateTabs } from "./serialize";
 import { loadAll, type SpaceMeta, saveActiveId, saveSpacesList } from "./store";
 import { useSpaces } from "./useSpaces";
@@ -61,12 +62,17 @@ export function useSpacesBoot({
             .getState()
             .init()
             .catch(() => {});
+          const parsedEnv = parseWorkspaceScopeKey(
+            usePreferencesStore.getState().defaultWorkspaceEnv,
+          );
+          if (parsedEnv.kind === "ssh") await useSshHosts.getState().hydrate();
           const meta: SpaceMeta = {
             id: DEFAULT_SPACE_ID,
             name: "Default",
             root,
-            env: parseWorkspaceScopeKey(
-              usePreferencesStore.getState().defaultWorkspaceEnv,
+            env: resolveSpaceEnv(
+              { env: parsedEnv },
+              useSshHosts.getState().hosts,
             ),
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -93,7 +99,21 @@ export function useSpacesBoot({
 
         // Apply the space's env+home before the fresh-tab fallback and spawns
         // below; env is set synchronously so cwd resolution picks WSL vs local.
-        const env = activeSpaceEnv(spaces, active);
+        if (spaces.some((s) => s.env.kind === "ssh")) {
+          await useSshHosts.getState().hydrate();
+        }
+        const activeSpace = findActiveSpace(spaces, active);
+        const env = resolveSpaceEnv(activeSpace, useSshHosts.getState().hosts);
+        // A space whose SSH host was removed degrades to local for good, so
+        // every later boot and switch agrees with the resolved environment.
+        if (
+          activeSpace &&
+          activeSpace.env.kind === "ssh" &&
+          env.kind === "local"
+        ) {
+          activeSpace.env = env;
+          await saveSpacesList(spaces);
+        }
         const restoredHome = await adoptWorkspaceEnv(env);
 
         // Active space must never be empty, else its tab list shows nothing.
@@ -102,9 +122,27 @@ export function useSpacesBoot({
           restored.push(freshTerminalTab(active, cwd, allocId));
         }
 
-        await Promise.allSettled(
-          uniqueCwds(restored).map((cwd) => native.workspaceAuthorize(cwd)),
-        );
+        // SSH roots are authorized by `ssh_authorize_root` when a remote space
+        // is created; running the local registry on them would be wrong.
+        if (env.kind === "ssh") {
+          // The native root list is in-memory, so every launch re-authorizes
+          // the active space root and its restored tab directories before any
+          // remote fs call can run.
+          const roots = new Set<string>();
+          if (activeSpace?.root) roots.add(activeSpace.root);
+          for (const cwd of uniqueCwds(
+            restored.filter((t) => t.spaceId === active),
+          )) {
+            roots.add(cwd);
+          }
+          await Promise.allSettled(
+            [...roots].map((path) => authorizeRemoteRoot(env.hostId, path)),
+          );
+        } else {
+          await Promise.allSettled(
+            uniqueCwds(restored).map((cwd) => native.workspaceAuthorize(cwd)),
+          );
+        }
 
         const initialActiveIndex: Record<string, number> = {};
         for (const [id, st] of states)

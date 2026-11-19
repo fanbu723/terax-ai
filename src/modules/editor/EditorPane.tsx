@@ -5,6 +5,7 @@ import { getCustomEndpointKey, getKey } from "@/modules/ai/lib/keyring";
 import { lspFormatDocument, useLspExtension } from "@/modules/lsp";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { onKeysChanged } from "@/modules/settings/store";
+import { currentWorkspaceEnv, isRemoteEnv } from "@/modules/workspace";
 import { acceptCompletion, startCompletion } from "@codemirror/autocomplete";
 import { redo, undo } from "@codemirror/commands";
 import {
@@ -206,8 +207,17 @@ export const EditorPane = memo(
     const performSave = useCallback(async () => {
       const view = cmRef.current?.view;
       const prefs = usePreferencesStore.getState();
-      const formatter = resolveFormatter(languageRef.current, prefs);
-      if (prefs.editorFormatOnSave && formatter === "lsp" && view) {
+      // External formatters and language servers only run on this machine.
+      const remoteFile = isRemoteEnv(currentWorkspaceEnv());
+      const formatter = remoteFile
+        ? null
+        : resolveFormatter(languageRef.current, prefs);
+      if (
+        !remoteFile &&
+        prefs.editorFormatOnSave &&
+        formatter === "lsp" &&
+        view
+      ) {
         if (lspActiveRef.current) {
           let res: "done" | "unsupported" = "done";
           try {
@@ -239,7 +249,12 @@ export const EditorPane = memo(
       const docAtSave = view?.state.doc;
       const saved = await saveRef.current();
       if (!saved) return;
-      if (prefs.editorFormatOnSave && formatter !== "lsp") {
+      if (
+        !remoteFile &&
+        prefs.editorFormatOnSave &&
+        formatter &&
+        formatter !== "lsp"
+      ) {
         const error = await runExternalFormatter(
           formatter,
           pathRef.current,

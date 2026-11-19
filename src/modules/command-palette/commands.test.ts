@@ -49,6 +49,11 @@ function baseContext(
     openSpacesOverview: noop,
     newSpace: noop,
     switchSpace: noop,
+    remoteHostCount: 1,
+    remoteBackendAvailable: true,
+    openRemoteConnect: noop,
+    openRemoteSpace: noop,
+    openRemoteManageHosts: noop,
     ...over,
   };
 }
@@ -100,5 +105,38 @@ describe("createCommandItems", () => {
       "spaces.switch.sp1",
     );
     expect(reason).toBe("Current space");
+  });
+});
+
+describe("remote commands", () => {
+  it("enables the remote actions when a host and the backend exist", () => {
+    expect(reasonById({}, "remote.connect")).toBeUndefined();
+    expect(reasonById({}, "remote.newSpace")).toBeUndefined();
+    expect(reasonById({}, "remote.manageHosts")).toBeUndefined();
+  });
+
+  it("disables connect and new space when there are no hosts", () => {
+    expect(reasonById({ remoteHostCount: 0 }, "remote.connect")).toBe(
+      "No SSH hosts",
+    );
+    expect(reasonById({ remoteHostCount: 0 }, "remote.newSpace")).toBe(
+      "No SSH hosts",
+    );
+    // Managing hosts stays reachable so the user can add the first one.
+    expect(reasonById({ remoteHostCount: 0 }, "remote.manageHosts")).toBe(
+      undefined,
+    );
+  });
+
+  it("disables every remote action when the backend is missing", () => {
+    for (const id of [
+      "remote.connect",
+      "remote.newSpace",
+      "remote.manageHosts",
+    ]) {
+      expect(reasonById({ remoteBackendAvailable: false }, id)).toBe(
+        "SSH is not available in this build.",
+      );
+    }
   });
 });

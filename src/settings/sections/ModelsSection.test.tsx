@@ -169,4 +169,7 @@ it.each(["models", "general"])(
       ),
     ).toBe(true);
   },
+  // Importing the whole settings graph takes seconds while the full suite
+  // saturates the workers; the default 5 s timeout flakes there.
+  15_000,
 );

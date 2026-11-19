@@ -19,8 +19,23 @@ export function activeSpaceEnv(
   return findActiveSpace(spaces, activeId)?.env ?? { kind: "local" };
 }
 
-// A WSL space falls back to null, not the local cwd, so its first tab opens at
-// the WSL home instead of a Windows path.
+/**
+ * A space pinned to an SSH host that no longer exists degrades to local instead
+ * of operating on a remote path with the wrong transport.
+ */
+export function resolveSpaceEnv(
+  space: Pick<SpaceMeta, "env"> | null | undefined,
+  hosts: readonly { id: string }[],
+): WorkspaceEnv {
+  const env = space?.env ?? { kind: "local" };
+  if (env.kind === "ssh" && !hosts.some((host) => host.id === env.hostId)) {
+    return { kind: "local" };
+  }
+  return env;
+}
+
+// A WSL or SSH space falls back to null, not the local cwd, so its first tab
+// opens at the remote home instead of a local path.
 export function freshTabCwd(
   env: WorkspaceEnv,
   restoredHome: string | null,
