@@ -708,6 +708,16 @@ function ConnectionBar({ chatSessionId }: { chatSessionId: string }) {
         </details>
       ) : null}
       <span className="flex-1" />
+      {connStatus === "connecting" ? (
+        <Button
+          size="xs"
+          variant="ghost"
+          className="h-6 px-1.5 text-[10px] text-muted-foreground"
+          onClick={() => void disconnect()}
+        >
+          {t("Cancel")}
+        </Button>
+      ) : null}
       {connStatus === "error" ? (
         <Button
           size="xs"
