@@ -143,6 +143,20 @@ describe("buildElicitationContent", () => {
       buildElicitationContent(form, {
         name: "Ada",
         color: "red",
+        count: "12abc",
+      }),
+    ).toMatchObject({ ok: false, field: "count", reason: "invalid" });
+    expect(
+      buildElicitationContent(form, {
+        name: "Ada",
+        color: "red",
+        count: "1.5",
+      }),
+    ).toMatchObject({ ok: false, field: "count", reason: "invalid" });
+    expect(
+      buildElicitationContent(form, {
+        name: "Ada",
+        color: "red",
         count: "99",
       }),
     ).toMatchObject({ ok: false, field: "count", reason: "invalid" });

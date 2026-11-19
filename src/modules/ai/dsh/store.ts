@@ -99,6 +99,8 @@ const permissionResolvers = new Map<
   string,
   (response: RequestPermissionResponse) => void
 >();
+let logBuffer: string[] = [];
+let logTimer: ReturnType<typeof setTimeout> | null = null;
 const elicitationResolvers = new Map<
   string,
   (response: CreateElicitationResponse) => void
@@ -120,6 +122,37 @@ function elicitationSessionId(request: CreateElicitationRequest): string | null 
     return request.sessionId;
   }
   return null;
+}
+
+function queueLog(set: SetDsh, line: string): void {
+  logBuffer.push(line);
+  if (logTimer !== null) return;
+  logTimer = setTimeout(() => {
+    logTimer = null;
+    const lines = logBuffer;
+    logBuffer = [];
+    if (lines.length === 0) return;
+    set((state) => ({
+      connLogs: [...state.connLogs, ...lines].slice(-MAX_LOGS),
+    }));
+  }, 200);
+}
+
+function focusDshChat(sessionId: string | null): void {
+  if (!sessionId) return;
+  const chat = Object.entries(useDshStore.getState().currentByChat).find(
+    ([, acpSessionId]) => acpSessionId === sessionId,
+  );
+  if (chat) useDshTargetStore.getState().setTarget(chat[0], "dsh");
+  useChatStore.getState().openMini();
+}
+
+function clearLogQueue(): void {
+  logBuffer = [];
+  if (logTimer !== null) {
+    clearTimeout(logTimer);
+    logTimer = null;
+  }
 }
 
 function nextFeedbackKey(prefix: string): string {
@@ -194,7 +227,7 @@ function connectionHandlers(set: SetDsh): DshClientHandlers {
             { key, sessionId: request.sessionId, request },
           ],
         }));
-        useChatStore.getState().openMini();
+        focusDshChat(request.sessionId);
       }),
     onElicitation: (request: CreateElicitationRequest) => {
       if (request.mode !== "form") {
@@ -214,7 +247,11 @@ function connectionHandlers(set: SetDsh): DshClientHandlers {
             },
           ],
         }));
-        useChatStore.getState().openMini();
+        focusDshChat(
+          "sessionId" in request && typeof request.sessionId === "string"
+            ? request.sessionId
+            : null,
+        );
       });
     },
     onExit: (info: AcpExitInfo) => {
@@ -237,9 +274,7 @@ function connectionHandlers(set: SetDsh): DshClientHandlers {
       });
     },
     onLog: (line: string) => {
-      set((state) => ({
-        connLogs: [...state.connLogs, line].slice(-MAX_LOGS),
-      }));
+      queueLog(set, line);
     },
   };
 }
@@ -286,6 +321,7 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
       connLogs: [],
       connStartedAt: Date.now(),
     });
+    clearLogQueue();
     connecting = (async () => {
       try {
         const instance = new DshAcpClient({
@@ -493,6 +529,7 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
 
   disconnect: async () => {
     if (get().connStatus === "connecting") connectCancelled = true;
+    clearLogQueue();
     const current = client;
     client = null;
     attachedSessions.clear();
