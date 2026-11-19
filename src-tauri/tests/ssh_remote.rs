@@ -275,3 +275,56 @@ fn remote_home_and_probe_tools_are_reported() {
     let listed = remote::list(&remote.host, dir.path().to_str().unwrap()).unwrap();
     assert!(listed.is_empty());
 }
+
+/// Real-host lane, ignored by default so CI needs no credentials:
+/// `TERAX_REAL_SSH_HOST=<alias> cargo test --test ssh_remote -- --ignored real_ssh`
+///
+/// The alias must exist in `~/.ssh/config` (or be a plain address) and must
+/// authenticate non-interactively (`BatchMode`), because the smoke run is
+/// unattended. Everything it creates lives in one remote temp directory that is
+/// removed at the end.
+#[test]
+#[ignore = "requires a reachable SSH host configured by the caller"]
+fn real_ssh_host_roundtrip() {
+    let alias = std::env::var("TERAX_REAL_SSH_HOST")
+        .expect("set TERAX_REAL_SSH_HOST to run the real-host lane");
+    let host = SshHost {
+        id: "ssh-real".into(),
+        label: "Real".into(),
+        host: alias.clone(),
+        port: None,
+        user: None,
+        identity_file: None,
+        default_dir: None,
+        remote_shell: None,
+    };
+
+    let home = remote::home(&host).expect("remote home");
+    assert!(home.starts_with('/'), "home {home}");
+
+    let dir = format!("/tmp/terax-ssh-smoke-{}", std::process::id());
+    remote::create_dir(&host, &dir, true).expect("create temp dir");
+    let remote_roots = RemoteRoots::new(host.clone(), vec![dir.clone()]);
+
+    let file = format!("{dir}/hello.txt");
+    let mtime = route::write_file(&remote_roots, &file, "hello from terax").expect("write");
+    assert!(mtime > 0);
+
+    let read = route::read_file(&remote_roots, &file, false).expect("read");
+    match read {
+        terax_lib::modules::fs::file::ReadResult::Text { content, .. } => {
+            assert_eq!(content, "hello from terax")
+        }
+        other => panic!("expected text, got {other:?}"),
+    }
+
+    let entries = route::read_dir(&remote_roots, &dir, false).expect("list");
+    assert!(entries.iter().any(|entry| entry.name == "hello.txt"));
+
+    let moved = format!("{dir}/renamed.txt");
+    route::rename(&remote_roots, &file, &moved).expect("rename");
+    assert!(route::stat(&remote_roots, &moved).expect("stat").is_some());
+
+    route::delete(&remote_roots, &moved).expect("delete");
+    route::delete(&remote_roots, &dir).expect("delete temp dir");
+}
