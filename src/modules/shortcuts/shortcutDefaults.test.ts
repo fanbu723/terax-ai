@@ -53,6 +53,8 @@ search.focus: Cmd+f
 ai.toggle: Cmd+i
 ai.toggleMini: Shift+Cmd+i
 ai.askSelection: Cmd+j
+ai.approveTool: Alt+Cmd+Enter
+ai.denyTool: Shift+Cmd+Backspace
 agent.focusAttention: Shift+Cmd+a
 sidebar.toggle: Cmd+b, Shift+Cmd+b
 explorer.focus: Shift+Cmd+e

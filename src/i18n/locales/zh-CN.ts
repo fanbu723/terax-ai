@@ -274,9 +274,11 @@ export default {
   View: "视图",
 
   // Shortcut labels
+  "Approve pending tool call": "批准待审批的工具调用",
   "Ask AI about selection": "就选中内容询问 AI",
   "Clear terminal": "清空终端",
   "Close tab or pane": "关闭标签页或窗格",
+  "Deny pending tool call": "拒绝待审批的工具调用",
   "Find in files": "在文件中查找",
   "Find in tab": "在标签页内查找",
   "Focus next pane": "聚焦下一个窗格",

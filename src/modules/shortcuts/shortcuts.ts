@@ -45,6 +45,8 @@ export type ShortcutId =
   | "ai.toggle"
   | "ai.toggleMini"
   | "ai.askSelection"
+  | "ai.approveTool"
+  | "ai.denyTool"
   | "agent.focusAttention"
   | "settings.open"
   | "sidebar.toggle"
@@ -257,6 +259,16 @@ const SHORTCUT_META: Omit<Shortcut, "defaultBindings">[] = [
   {
     id: "ai.askSelection",
     label: "Ask AI about selection",
+    group: "AI",
+  },
+  {
+    id: "ai.approveTool",
+    label: "Approve pending tool call",
+    group: "AI",
+  },
+  {
+    id: "ai.denyTool",
+    label: "Deny pending tool call",
     group: "AI",
   },
   {

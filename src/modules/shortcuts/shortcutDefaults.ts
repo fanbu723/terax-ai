@@ -62,6 +62,8 @@ export const MAC_DEFAULTS: Readonly<Record<ShortcutId, readonly KeyBinding[]>> =
     "ai.toggle": [{ meta: true, key: "i" }],
     "ai.toggleMini": [{ shift: true, meta: true, key: "i" }],
     "ai.askSelection": [{ meta: true, key: "j" }],
+    "ai.approveTool": [{ alt: true, meta: true, key: "Enter" }],
+    "ai.denyTool": [{ shift: true, meta: true, key: "Backspace" }],
     "agent.focusAttention": [{ shift: true, meta: true, key: "a" }],
     "sidebar.toggle": [
       { meta: true, key: "b" },
@@ -128,6 +130,8 @@ export const WIN_LINUX_DEFAULTS: Readonly<
   "ai.toggle": [{ ...CS, key: "i" }],
   "ai.toggleMini": [{ ...CS, key: "," }],
   "ai.askSelection": [{ ...CS, key: "j" }],
+  "ai.approveTool": [{ ctrl: true, alt: true, key: "Enter" }],
+  "ai.denyTool": [{ ...CS, key: "Backspace" }],
   "agent.focusAttention": [{ ...CS, key: "a" }],
   "sidebar.toggle": [{ ...CS, key: "b" }],
   "explorer.focus": [{ ...CS, key: "x" }],

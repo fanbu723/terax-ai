@@ -960,6 +960,12 @@ export default function App() {
         toggleMini();
       },
       "ai.askSelection": onAskFromSelection,
+      "ai.approveTool": () => {
+        useChatStore.getState().respondToNextApproval(true);
+      },
+      "ai.denyTool": () => {
+        useChatStore.getState().respondToNextApproval(false);
+      },
       "agent.focusAttention": () => {
         const t = nextAttentionTarget();
         if (t) activateAgentTarget(t.tabId, t.leafId);
@@ -1019,6 +1025,11 @@ export default function App() {
           ? leafIds(activeTab.paneTree).length
           : null;
       if (shouldDisablePaneSwapShortcut(id, terminalPaneCount)) return true;
+      if (id === "ai.approveTool" || id === "ai.denyTool") {
+        // Only claim the chord while a tool approval is actually waiting; with
+        // nothing pending the keys must reach the terminal/editor untouched.
+        return useChatStore.getState().agentMeta.approvalIds.length === 0;
+      }
       if (
         id === "editor.undo" ||
         id === "editor.redo" ||
