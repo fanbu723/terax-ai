@@ -22,7 +22,12 @@ export function DshTargetSwitch({
           aria-pressed={target === value}
           onClick={() => {
             setTarget(chatSessionId, value);
-            if (value === "dsh") useChatStore.getState().openMini();
+            // The console lives in the mini window; the composer lives in the
+            // workspace bar, so surface both.
+            if (value === "dsh") {
+              useChatStore.getState().openMini();
+              useChatStore.getState().focusInput();
+            }
           }}
           className={cn(
             "rounded px-1.5 py-0.5 text-[10px] transition-colors",
