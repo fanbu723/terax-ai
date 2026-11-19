@@ -44,6 +44,8 @@ import { useMiniWindowGeometry } from "../lib/useMiniWindowGeometry";
 import { useAgentsStore } from "../store/agentsStore";
 import { getOrCreateChat } from "../store/chatRuntime";
 import { useChatStore } from "../store/chatStore";
+import { normalizePermissionMode } from "../lib/permissions";
+import { usePermissionStore } from "../store/permissionStore";
 import { usePlanStore } from "../store/planStore";
 import { AgentSwitcher } from "./AgentSwitcher";
 import { AiChatView } from "./AiChat";
@@ -206,6 +208,7 @@ function Body({
         onHeaderPointerDown={onHeaderPointerDown}
       />
 
+      <PermissionStrip />
       <PlanModeStrip />
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -254,6 +257,39 @@ function PlanModeStrip() {
         className="rounded px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         {t("Exit")}
+      </button>
+    </div>
+  );
+}
+
+function PermissionStrip() {
+  const t = useT();
+  const sessionId = useChatStore((s) => s.activeSessionId);
+  const bySession = usePermissionStore((s) => s.bySession);
+  const setMode = usePermissionStore((s) => s.setMode);
+  const defaultMode = usePreferencesStore((s) => s.agentPermissionMode);
+  const override = sessionId ? bySession[sessionId] : undefined;
+  if (normalizePermissionMode(override ?? defaultMode) !== "allow-all") {
+    return null;
+  }
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-b border-border/40 bg-destructive/10 px-3 py-1.5">
+      <span className="size-1.5 shrink-0 rounded-full bg-destructive terax-attention-pulse" />
+      <span className="text-[11px] font-medium text-destructive">
+        {t("Allow all")}
+      </span>
+      <span className="text-[11px] text-muted-foreground">
+        {t("Tool calls run without asking.")}
+      </span>
+      <span className="flex-1" />
+      <button
+        type="button"
+        onClick={() => {
+          if (sessionId) setMode(sessionId, "assisted");
+        }}
+        className="rounded px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        {t("Switch to Assisted")}
       </button>
     </div>
   );
