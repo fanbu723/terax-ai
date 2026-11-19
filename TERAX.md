@@ -474,11 +474,14 @@ BYOK. Cloud providers via `@ai-sdk/*`: **OpenAI, Anthropic, Google, xAI, Cerebra
 
 ### UI localization
 
-- New user-facing copy goes through `t()` from `src/i18n`: `const t = useT()` in components, the bare `t` import in non-React modules. Keys are the English source string, so an untranslated string simply renders in English.
+- The policy is [docs/contributing/i18n-zh.md](docs/contributing/i18n-zh.md): scope, glossary, punctuation, placeholders and the full review checklist. Read it before adding copy.
+- New user-facing copy goes through `t()` from `src/i18n`: `const t = useT()` in components, the bare `t` import in non-React modules. Keys are the English source string, so the English UI is the fallback and is never reworded while wrapping.
 - `src/i18n/locales/<locale>.ts` is loaded by `await import()` only. Never import a locale pack statically: it would join the startup graph and break the `size-limit` and `dist-budget` gates.
 - Both window entries call `await bootI18n()` before `createRoot`; the resolved language is mirrored into `localStorage` so the first frame is already localized and no IPC roundtrip is needed.
 - The language preference (`uiLanguage`: `auto` | `en` | `zh-CN`) rides the existing `writePref` / `terax://prefs-changed` path, so a change in the settings window repaints the main window.
-- `pnpm i18n:check` fails on stale dictionary entries (no matching `t()` call) and on typographic em dashes in translated values; untranslated strings are reported only so a locale can land incrementally.
+- `pnpm i18n:verify` runs both gates: the dictionary check fails on untranslated keys, stale entries, duplicate keys and typographic em dashes; the source audit fails on user-facing English that never became a `t()` key. Technical strings that stay English belong in `scripts/i18n-allowlist.mjs` with a reason.
+- `src/i18n/format.ts` formats dates, relative time and numbers from the UI locale, not the OS locale; `useLocale()` is the dependency for memoized translated data. `setLocale` keeps `<html lang>` in step, and the settings window localizes its native title.
+- `pnpm test` runs the same coverage gates through `src/i18n/i18nCoverage.test.ts` and `src/i18n/i18nUsage.test.ts`, so CI catches a new English string that ships without a translation.
 
 ### Bundle config
 
