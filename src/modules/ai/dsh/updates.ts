@@ -8,12 +8,12 @@ import type {
   ToolCallStatus,
 } from "@agentclientprotocol/sdk";
 
-export type DshUsage = {
+type DshUsage = {
   used: number;
   size: number;
 };
 
-export type DshTextItem = {
+type DshTextItem = {
   kind: "user" | "assistant" | "thought";
   id: string;
   text: string;
@@ -32,7 +32,7 @@ export type DshToolItem = {
   rawOutput?: unknown;
 };
 
-export type DshNoticeItem = {
+type DshNoticeItem = {
   kind: "notice";
   id: string;
   tone: "info" | "error";

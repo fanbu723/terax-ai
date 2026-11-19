@@ -11,7 +11,7 @@ const MAX_ITEMS_PER_SESSION = 300;
 const MAX_SESSIONS = 20;
 const PERSIST_DELAY_MS = 400;
 
-export type PersistedDshSession = {
+type PersistedDshSession = {
   items: DshItem[];
   title: string | null;
   updatedAt: number;

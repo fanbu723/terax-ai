@@ -3,6 +3,7 @@ import type {
   CreateElicitationResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
+  SessionConfigOption,
   SessionInfo,
   SessionUpdate,
   SetSessionConfigOptionResponse,
@@ -324,6 +325,7 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
     sendingChats.add(chatSessionId);
     useChatStore.getState().openMini();
     try {
+      await get().hydrate();
       if (!(await get().ensureConnection()) || !client) return;
       await sendPrompt(chatSessionId, text);
     } finally {
@@ -380,13 +382,22 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
   resumeSession: async (chatSessionId, acpSessionId) => {
     if (!(await get().ensureConnection()) || !client) return;
     try {
+      let configOptions: SessionConfigOption[] | null = null;
       if (!attachedSessions.has(acpSessionId)) {
-        await client.resumeSession(acpSessionId, sessionCwd() ?? ".");
+        const resumed = await client.resumeSession(
+          acpSessionId,
+          sessionCwd() ?? ".",
+        );
+        configOptions = resumed.configOptions ?? null;
         attachedSessions.add(acpSessionId);
       }
       set((s) => {
-        const existing =
+        const base =
           s.sessions[acpSessionId] ?? createDshSessionState(acpSessionId);
+        const existing = {
+          ...base,
+          configOptions: configOptions ?? base.configOptions,
+        };
         return {
           sessions: { ...s.sessions, [acpSessionId]: existing },
           currentByChat: { ...s.currentByChat, [chatSessionId]: acpSessionId },
@@ -597,16 +608,19 @@ async function ensureSession(
   }
   if (current) {
     try {
-      await connected.resumeSession(current, sessionCwd() ?? ".");
+      const resumed = await connected.resumeSession(
+        current,
+        sessionCwd() ?? ".",
+      );
       attachedSessions.add(current);
-      if (!get().sessions[current]) {
-        set((state) => ({
-          sessions: {
-            ...state.sessions,
-            [current]: createDshSessionState(current),
-          },
-        }));
-      }
+      set((state) => {
+        const existing =
+          state.sessions[current] ?? createDshSessionState(current);
+        if (resumed.configOptions) {
+          existing.configOptions = resumed.configOptions;
+        }
+        return { sessions: { ...state.sessions, [current]: { ...existing } } };
+      });
       return current;
     } catch {
       // The persisted session is gone; fall through to a fresh one.
