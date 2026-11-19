@@ -207,8 +207,14 @@ the presses that were escape-coded. The wheel accumulates whole lines scaled by 
 report stands for three lines, at most ten per event) and becomes cursor keys on the
 alternate screen under DEC 1007; the input element is moved onto the cursor cell only for the length of an IME
 composition (`ImeAnchor`).
-Terminal text uses the configured font, an installed Nerd Font when detected,
-or bundled JetBrains Mono. Per codepoint the chain is that font, JetBrains Mono, an
+Terminal, editor and code blocks use the configured font, an installed Nerd Font
+when detected (Maple Mono NF CN and Maple Mono NF are preferred), or bundled
+JetBrains Mono. The interface prefers installed Maple variants (`Maple Mono NF CN`,
+`Maple Mono NF`, `Maple Mono CN`) and falls back to bundled Inter; Settings ›
+General › Fonts overrides the interface family and the terminal/editor family
+independently. The UI consumes `--app-font`, code surfaces consume `--font-mono`,
+and `applyAppFonts()` writes both from preferences, so a font change applies
+without remounting. Per codepoint the terminal chain is that font, JetBrains Mono, an
 installed Symbols Nerd Font, then two bundled private-use-only faces: the BMP area
 (365 kB, loaded with the first terminal before rasterization) and the Material
 Design icons (349 kB, fetched when such a glyph is first drawn, blank until then;
