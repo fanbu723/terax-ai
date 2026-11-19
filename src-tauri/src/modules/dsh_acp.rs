@@ -174,20 +174,20 @@ impl AcpState {
 /// A single line exceeded [`LineSplitter`]'s cap; the caller must stop the
 /// agent before the rest of the line is buffered.
 #[derive(Debug, PartialEq, Eq)]
-struct LineTooLong;
+pub(crate) struct LineTooLong;
 
 /// Incremental byte splitter for newline-delimited output.
 ///
 /// Lines are split on `\n` only; a trailing `\r` (CRLF framing) is stripped
 /// and undecodable bytes are replaced lossily. A line longer than the cap is
 /// reported as [`LineTooLong`] instead of being buffered without bound.
-struct LineSplitter {
+pub(crate) struct LineSplitter {
     pending: Vec<u8>,
     cap: usize,
 }
 
 impl LineSplitter {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::with_cap(MAX_LINE_BYTES)
     }
 
@@ -199,7 +199,7 @@ impl LineSplitter {
     }
 
     /// Feeds a chunk of pipe bytes, returning every line it completed.
-    fn push(&mut self, chunk: &[u8]) -> Result<Vec<String>, LineTooLong> {
+    pub(crate) fn push(&mut self, chunk: &[u8]) -> Result<Vec<String>, LineTooLong> {
         let mut lines = Vec::new();
         let mut start = 0;
         for (index, &byte) in chunk.iter().enumerate() {
@@ -223,7 +223,7 @@ impl LineSplitter {
     }
 
     /// A final line that ended at EOF without a newline.
-    fn finish(&mut self) -> Option<String> {
+    pub(crate) fn finish(&mut self) -> Option<String> {
         if self.pending.is_empty() {
             return None;
         }
@@ -318,7 +318,7 @@ fn capture_login_env() -> Option<HashMap<String, String>> {
     Some(env)
 }
 
-fn spawn_thread(
+pub(crate) fn spawn_thread(
     name: String,
     work: impl FnOnce() + Send + 'static,
 ) -> Result<thread::JoinHandle<()>, String> {
@@ -330,7 +330,7 @@ fn spawn_thread(
 }
 
 /// Builds the platform shell invocation for the agent command.
-fn build_command(
+pub(crate) fn build_command(
     command: &str,
     #[cfg_attr(not(windows), allow(unused_variables))] workspace: &WorkspaceEnv,
     #[cfg_attr(not(windows), allow(unused_variables))] cwd: Option<&str>,
@@ -548,23 +548,26 @@ fn spawn(
     Ok(session)
 }
 
-/// Validates the single-line shell command that starts the agent.
-fn validate_command(command: &str) -> Result<&str, String> {
+/// Validates a single-line shell command that starts a DSH process.
+pub(crate) fn validate_shell_command<'a>(label: &str, command: &'a str) -> Result<&'a str, String> {
     let command = command.trim();
     if command.is_empty() {
-        return Err("dsh_acp: command is empty".into());
+        return Err(format!("{label}: command is empty"));
     }
     if command.len() > MAX_COMMAND_LEN {
-        return Err(format!(
-            "dsh_acp: command is longer than {MAX_COMMAND_LEN} bytes"
-        ));
+        return Err(format!("{label}: command is longer than {MAX_COMMAND_LEN} bytes"));
     }
     // A control character (newline included) would smuggle a second command
     // into the shell invocation.
     if command.chars().any(char::is_control) {
-        return Err("dsh_acp: command contains control characters".into());
+        return Err(format!("{label}: command contains control characters"));
     }
     Ok(command)
+}
+
+/// Validates the single-line shell command that starts the agent.
+fn validate_command(command: &str) -> Result<&str, String> {
+    validate_shell_command("dsh_acp", command)
 }
 
 #[tauri::command]

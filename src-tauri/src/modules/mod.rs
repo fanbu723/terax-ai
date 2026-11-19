@@ -8,6 +8,7 @@ pub mod app_menu;
 pub mod bench;
 pub mod control;
 pub mod dsh_acp;
+pub mod dsh_web;
 pub mod fs;
 pub mod git;
 pub mod history;

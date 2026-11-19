@@ -3,7 +3,8 @@ pub mod modules;
 #[cfg(target_os = "macos")]
 use modules::app_menu;
 use modules::{
-    agent, control, dsh_acp, fs, git, history, lsp, net, pty, secrets, shell, vibrancy, workspace,
+    agent, control, dsh_acp, dsh_web, fs, git, history, lsp, net, pty, secrets, shell, vibrancy,
+    workspace,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -270,6 +271,7 @@ pub fn run() {
         .manage(history::HistoryState::default())
         .manage(lsp::LspState::default())
         .manage(dsh_acp::AcpState::default())
+        .manage(dsh_web::DshWebState::default())
         .manage(fs::supersede::Supersede::default())
         .manage(fs::index::FileIndexState::default())
         .manage({
@@ -330,6 +332,11 @@ pub fn run() {
             dsh_acp::dsh_acp_write,
             dsh_acp::dsh_acp_kill,
             dsh_acp::dsh_acp_close_all,
+            dsh_web::dsh_web_start,
+            dsh_web::dsh_web_status,
+            dsh_web::dsh_web_open,
+            dsh_web::dsh_web_stop,
+            dsh_web::dsh_web_close_all,
             fs::search::fs_search,
             fs::search::fs_warm_index,
             fs::search::fs_list_files,
@@ -457,6 +464,9 @@ pub fn run() {
                         state.kill_all();
                     }
                     if let Some(state) = app.try_state::<dsh_acp::AcpState>() {
+                        state.close_all();
+                    }
+                    if let Some(state) = app.try_state::<dsh_web::DshWebState>() {
                         state.close_all();
                     }
                     if let Some(state) = app.try_state::<control::ControlState>() {
