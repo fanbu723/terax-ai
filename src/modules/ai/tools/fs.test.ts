@@ -1,5 +1,5 @@
 import type { ToolExecutionOptions } from "ai";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ToolContext } from "./context";
 
 const nativeMock = vi.hoisted(() => ({
@@ -11,6 +11,8 @@ const nativeMock = vi.hoisted(() => ({
 vi.mock("../lib/native", () => ({ native: nativeMock }));
 
 import { usePlanStore } from "../store/planStore";
+import { useDiffReviewStore } from "../store/diffReviewStore";
+import { clearApprovalDecisions } from "../lib/approvalDecisions";
 import { buildFsTools } from "./fs";
 
 const options: ToolExecutionOptions = { toolCallId: "write", messages: [] };
@@ -39,6 +41,8 @@ async function queueWrite() {
 beforeEach(() => {
   vi.clearAllMocks();
   usePlanStore.setState({ active: true, queue: [] });
+  useDiffReviewStore.getState().clear();
+  clearApprovalDecisions();
 });
 
 it.each([
@@ -88,3 +92,86 @@ it.each(["original", ""])(
     });
   },
 );
+
+describe("auto-approved writes", () => {
+  async function autoWrite(toolCallId: string) {
+    usePlanStore.setState({ active: false, queue: [] });
+    nativeMock.readFile.mockResolvedValue({
+      kind: "text",
+      content: "original",
+      size: 8,
+    });
+    const tools = buildFsTools(context);
+    const needsApproval = tools.write_file.needsApproval as unknown as (
+      input: unknown,
+      options: { toolCallId: string },
+    ) => boolean;
+    const input = { path: "/workspace/file.txt", content: "replacement" };
+    expect(needsApproval(input, { toolCallId })).toBe(false);
+    const execute = tools.write_file.execute;
+    if (!execute) throw new Error("missing write tool");
+    await execute(input, { toolCallId, messages: [] });
+    return useDiffReviewStore
+      .getState()
+      .entries.find((entry) => entry.toolCallId === toolCallId);
+  }
+
+  it("records a before/after snapshot for the review tab", async () => {
+    const entry = await autoWrite("auto-write");
+    expect(entry).toMatchObject({
+      sessionId: "session",
+      path: "/workspace/file.txt",
+      originalContent: "original",
+      proposedContent: "replacement",
+      isNewFile: false,
+      level: "low",
+    });
+  });
+
+  it("records a new file as an empty original", async () => {
+    usePlanStore.setState({ active: false, queue: [] });
+    nativeMock.readFile.mockRejectedValue("AI file not found");
+    const tools = buildFsTools(context);
+    const toolCallId = "auto-new";
+    (
+      tools.write_file.needsApproval as unknown as (
+        input: unknown,
+        options: { toolCallId: string },
+      ) => boolean
+    )({ path: "/workspace/new.txt" }, { toolCallId });
+    const execute = tools.write_file.execute;
+    if (!execute) throw new Error("missing write tool");
+    await execute(
+      { path: "/workspace/new.txt", content: "hello" },
+      { toolCallId, messages: [] },
+    );
+    expect(
+      useDiffReviewStore
+        .getState()
+        .entries.find((entry) => entry.toolCallId === toolCallId),
+    ).toMatchObject({ originalContent: "", isNewFile: true });
+  });
+
+  it("does not record plan-mode writes", async () => {
+    nativeMock.readFile.mockResolvedValue({
+      kind: "text",
+      content: "original",
+      size: 8,
+    });
+    const tools = buildFsTools(context);
+    const toolCallId = "plan-write";
+    (
+      tools.write_file.needsApproval as unknown as (
+        input: unknown,
+        options: { toolCallId: string },
+      ) => boolean
+    )({ path: "/workspace/file.txt", content: "replacement" }, { toolCallId });
+    const execute = tools.write_file.execute;
+    if (!execute) throw new Error("missing write tool");
+    await execute(
+      { path: "/workspace/file.txt", content: "replacement" },
+      { toolCallId, messages: [] },
+    );
+    expect(useDiffReviewStore.getState().entries).toEqual([]);
+  });
+});

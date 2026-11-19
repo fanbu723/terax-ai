@@ -25,6 +25,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
+import { toolAnnotation } from "@/modules/ai/lib/toolAnnotation";
 import { useChatStore } from "@/modules/ai/store/chatStore";
 import { HugeiconsIcon } from "@hugeicons/react";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
@@ -179,6 +180,8 @@ export type ToolProps = ComponentProps<typeof Collapsible> & {
   input?: unknown;
   output?: unknown;
   errorText?: string;
+  /** AI SDK tool-call id, used to look up the permission decision. */
+  toolCallId?: string;
 };
 
 // Tools whose `input` carries large/streaming content (file bodies, sub-
@@ -201,6 +204,7 @@ const ToolImpl = ({
   input,
   output,
   errorText,
+  toolCallId,
   defaultOpen,
   ...props
 }: ToolProps) => {
@@ -209,6 +213,7 @@ const ToolImpl = ({
   const Icon = meta?.icon ?? ToolsIcon;
   const label = toolLabel(toolName, t);
   const summary = deriveSummary(toolName, input, t);
+  const annotation = toolAnnotation(toolName, input, toolCallId, state, t);
   const isError = state === "output-error";
   const open = defaultOpen ?? isError;
   const isHeavy = HEAVY_CONTENT_TOOLS.has(toolName);
@@ -259,6 +264,14 @@ const ToolImpl = ({
         )}
       </CollapsibleTrigger>
 
+      {annotation ? (
+        <div className="mt-0.5 pl-[27px] pr-2 text-[10.5px] leading-snug text-muted-foreground/80">
+          <span className="inline-block max-w-full truncate align-bottom">
+            {annotation}
+          </span>
+        </div>
+      ) : null}
+
       {hasDetails && (
         <CollapsibleContent
           className={cn("terax-collapsible-content")}
@@ -286,6 +299,7 @@ const ToolImpl = ({
 // token. We compare the cheap derived summary instead of the input ref.
 export const Tool = memo(ToolImpl, (a, b) => {
   if (a.toolName !== b.toolName || a.state !== b.state) return false;
+  if (a.toolCallId !== b.toolCallId) return false;
   if (a.errorText !== b.errorText) return false;
   if (a.output !== b.output) return false;
   if (a.className !== b.className) return false;

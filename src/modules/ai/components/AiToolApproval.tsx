@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import { getApprovalDecision } from "../lib/approvalDecisions";
+import { riskLevelLabel, riskReasonLabel } from "../lib/riskCopy";
 import {
   Cancel01Icon,
   Edit02Icon,
@@ -57,6 +59,7 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
   const label = approvalLabel(toolName, t);
   const Icon = meta ?? ToolsIcon;
   const input = part.input as Record<string, unknown>;
+  const decision = getApprovalDecision(part.toolCallId);
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -69,13 +72,39 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
           className="shrink-0 text-muted-foreground"
         />
         <span className="text-[12px] font-medium text-foreground">{label}</span>
-        <span className="ml-auto text-[10px] text-muted-foreground">
+        {decision ? (
+          <span
+            className={cn(
+              "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+              decision.level === "high"
+                ? "bg-destructive/10 text-destructive"
+                : decision.level === "medium"
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+            )}
+          >
+            {riskLevelLabel(decision.level, t)}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "text-[10px] text-muted-foreground",
+            decision ? "" : "ml-auto",
+          )}
+        >
           {t("needs approval")}
         </span>
       </div>
 
       <div className="px-3 py-2.5">
         <PreviewBlock toolName={toolName} input={input} />
+        {decision ? (
+          <div className="mt-2 text-[10.5px] text-muted-foreground">
+            {t("Why this asks: {reason}", {
+              reason: riskReasonLabel(decision.code, t),
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-end gap-1.5 border-t border-border/60 px-3 py-2">

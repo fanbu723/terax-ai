@@ -1,4 +1,5 @@
 import { isMarkdownPath } from "@/lib/utils";
+import type { RiskCode, RiskLevel } from "@/modules/ai/lib/risk";
 import {
   type AgentInstanceCount,
   createAgentPanePlan,
@@ -93,6 +94,11 @@ export type AiDiffTab = TabBase & {
   approvalId: string;
   status: AiDiffStatus;
   isNewFile: boolean;
+  /** True when the permission mode applied the change without asking. */
+  autoApproved?: boolean;
+  /** Risk verdict that let the auto-approved change through. */
+  riskLevel?: RiskLevel;
+  riskCode?: RiskCode;
 };
 
 export type GitDiffTab = TabBase & {
@@ -918,6 +924,11 @@ export function useTabs(initial?: Partial<TerminalTab>) {
       proposedContent: string;
       approvalId: string;
       isNewFile: boolean;
+      /** Auto-approved mutations are review-only and do not steal focus. */
+      autoApproved?: boolean;
+      riskLevel?: RiskLevel;
+      riskCode?: RiskCode;
+      activate?: boolean;
     }) => {
       let targetId: number | null = null;
       setTabs((curr) => {
@@ -942,12 +953,19 @@ export function useTabs(initial?: Partial<TerminalTab>) {
             originalContent: input.originalContent,
             proposedContent: input.proposedContent,
             approvalId: input.approvalId,
-            status: "pending",
+            status: input.autoApproved ? "approved" : "pending",
             isNewFile: input.isNewFile,
+            ...(input.autoApproved
+              ? {
+                  autoApproved: true,
+                  riskLevel: input.riskLevel,
+                  riskCode: input.riskCode,
+                }
+              : {}),
           },
         ];
       });
-      if (targetId !== null) setActiveId(targetId);
+      if (targetId !== null && input.activate !== false) setActiveId(targetId);
       return targetId as number | null;
     },
     [setTabs, setActiveId],

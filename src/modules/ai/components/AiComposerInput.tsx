@@ -11,6 +11,7 @@ import { useChatStore } from "../store/chatStore";
 import { useSnippetsStore } from "../store/snippetsStore";
 import { AgentSwitcher } from "./AgentSwitcher";
 import { FilePickerContent } from "./FilePicker";
+import { PermissionSwitcher } from "./PermissionSwitcher";
 import { type PickerItem, SnippetPickerContent } from "./SnippetPicker";
 
 type SnippetTrigger = {
@@ -268,6 +269,7 @@ export function AiComposerInput() {
                 "placeholder:text-muted-foreground/60",
               )}
             />
+            <PermissionSwitcher />
             <AgentSwitcher />
           </div>
         </PopoverAnchor>

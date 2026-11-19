@@ -1,10 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { approvalFor } from "../lib/approvalGate";
 import { native } from "../lib/native";
 import {
   checkReadableCanonical,
   checkWritableCanonical,
 } from "../lib/security";
+import { autoDiffFor, useDiffReviewStore } from "../store/diffReviewStore";
 import { newQueuedEditId, usePlanStore } from "../store/planStore";
 import { resolvePath, type ToolContext } from "./context";
 
@@ -15,6 +17,26 @@ function djb2(s: string): number {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   return h >>> 0;
+}
+
+type DiffSnapshot = { originalContent: string; isNewFile: boolean };
+
+/**
+ * Read the pre-write contents for the post-hoc diff tab. `null` means the
+ * file exists but cannot be snapshotted (binary/oversized/unreadable), in
+ * which case the mutation still runs — only the review tab is skipped.
+ */
+async function snapshotForDiff(abs: string): Promise<DiffSnapshot | null> {
+  try {
+    const r = await native.readFile(abs);
+    if (r.kind !== "text") return null;
+    return { originalContent: r.content, isNewFile: false };
+  } catch (error) {
+    if (error === "AI file not found") {
+      return { originalContent: "", isNewFile: true };
+    }
+    return null;
+  }
 }
 
 export function buildFsTools(ctx: ToolContext) {
@@ -42,7 +64,10 @@ export function buildFsTools(ctx: ToolContext) {
       }),
       execute: async ({ path, offset, limit }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkReadableCanonical(reqPath, native.canonicalize);
+        const safety = await checkReadableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         try {
@@ -58,7 +83,12 @@ export function buildFsTools(ctx: ToolContext) {
           const hash = djb2(r.content);
           const isFullRead = offset === undefined && limit === undefined;
           const prior = ctx.readCache.get(abs);
-          if (isFullRead && prior && prior.size === r.size && prior.hash === hash) {
+          if (
+            isFullRead &&
+            prior &&
+            prior.size === r.size &&
+            prior.hash === hash
+          ) {
             return { path: abs, unchanged: true, size: r.size };
           }
           ctx.readCache.set(abs, { size: r.size, hash });
@@ -78,7 +108,10 @@ export function buildFsTools(ctx: ToolContext) {
               size: r.size,
               total_lines: lines.length,
               ...(truncated
-                ? { truncated: true, hint: "call read_file with offset to continue" }
+                ? {
+                    truncated: true,
+                    hint: "call read_file with offset to continue",
+                  }
                 : {}),
             };
           }
@@ -118,7 +151,10 @@ export function buildFsTools(ctx: ToolContext) {
       }),
       execute: async ({ path }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkReadableCanonical(reqPath, native.canonicalize);
+        const safety = await checkReadableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         try {
@@ -135,15 +171,18 @@ export function buildFsTools(ctx: ToolContext) {
 
     write_file: tool({
       description:
-        "Create or overwrite a file with the given content. Always asks the user before running. Prefer `edit` / `multi_edit` for in-place changes — only use `write_file` for creating a brand-new file or fully replacing a tiny one.",
+        "Create or overwrite a file with the given content. Approval depends on the permission mode. Prefer `edit` / `multi_edit` for in-place changes — only use `write_file` for creating a brand-new file or fully replacing a tiny one.",
       inputSchema: z.object({
         path: z.string(),
         content: z.string(),
       }),
-      needsApproval: true,
-      execute: async ({ path, content }) => {
+      needsApproval: approvalFor("write_file", ctx),
+      execute: async ({ path, content }, { toolCallId }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
 
@@ -179,9 +218,24 @@ export function buildFsTools(ctx: ToolContext) {
           };
         }
 
+        const auto = autoDiffFor(toolCallId, ctx.getSessionId());
+        const snapshot = auto ? await snapshotForDiff(abs) : null;
+
         try {
           await native.writeFile(abs, content);
           ctx.readCache.set(abs, { size: content.length, hash: djb2(content) });
+          if (auto && snapshot) {
+            useDiffReviewStore.getState().record({
+              toolCallId,
+              sessionId: ctx.getSessionId(),
+              path: abs,
+              originalContent: snapshot.originalContent,
+              proposedContent: content,
+              isNewFile: snapshot.isNewFile,
+              level: auto.level,
+              code: auto.code,
+            });
+          }
           return { path: abs, bytesWritten: content.length, ok: true };
         } catch (e) {
           return { error: String(e), path: abs };
@@ -191,14 +245,17 @@ export function buildFsTools(ctx: ToolContext) {
 
     create_directory: tool({
       description:
-        "Create a directory (and any missing parents). Always asks the user before running.",
+        "Create a directory (and any missing parents). Approval depends on the permission mode.",
       inputSchema: z.object({
         path: z.string(),
       }),
-      needsApproval: true,
+      needsApproval: approvalFor("create_directory", ctx),
       execute: async ({ path }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         if (usePlanStore.getState().active) {

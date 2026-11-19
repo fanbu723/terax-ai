@@ -17,9 +17,12 @@ export { resolvePath, type ToolContext } from "./context";
  *    auto-execute, but go through the security guard which refuses obvious
  *    secret paths (.env*, .ssh/, credentials, etc.).
  *  - Mutating tools (`write_file`, `edit`, `multi_edit`, `create_directory`,
- *    `run_command`) require explicit user approval — the AI SDK pauses on
- *    tool-call and surfaces a `tool-approval-request` part that the UI
- *    renders as a confirmation card.
+ *    `bash_run`, `bash_background`, `spawn_coding_agent`, `send_to_agent`)
+ *    go through `lib/approvalGate.ts`, which decides per call from the
+ *    session's permission mode: manual always asks, assisted asks unless
+ *    `lib/risk.ts` rates the call low-risk, allow-all never asks. Asking
+ *    surfaces a `tool-approval-request` part that the UI renders as a
+ *    confirmation card. `lib/security.ts` hard blocks apply in every mode.
  *  - `edit` / `multi_edit` additionally enforce a read-before-edit invariant
  *    (the model must have called read_file on the path earlier in the
  *    session).

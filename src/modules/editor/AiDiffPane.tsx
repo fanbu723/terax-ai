@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/useT";
+import { riskLevelLabel, riskReasonLabel } from "@/modules/ai/lib/riskCopy";
+import type { RiskCode, RiskLevel } from "@/modules/ai/lib/risk";
 import type { AiDiffStatus } from "@/modules/tabs";
 import { presentableDiff, unifiedMergeView } from "@codemirror/merge";
 import { EditorState, type Extension } from "@codemirror/state";
@@ -23,6 +25,10 @@ type Props = {
   proposedContent: string;
   status: AiDiffStatus;
   isNewFile: boolean;
+  /** Applied without a confirmation card; the tab is review-only. */
+  autoApproved?: boolean;
+  riskLevel?: RiskLevel;
+  riskCode?: RiskCode;
   onAccept: () => void;
   onReject: () => void;
 };
@@ -86,6 +92,9 @@ export function AiDiffPane({
   proposedContent,
   status,
   isNewFile,
+  autoApproved = false,
+  riskLevel,
+  riskCode,
   onAccept,
   onReject,
 }: Props) {
@@ -141,12 +150,28 @@ export function AiDiffPane({
             className="text-[11px] px-2.5 py-2.5"
             variant={STATUS_BADGE[status]}
           >
-            {status === "pending"
-              ? t("Pending review")
-              : status === "approved"
-                ? t("Applied")
-                : t("Rejected")}
+            {autoApproved
+              ? t("Auto-approved")
+              : status === "pending"
+                ? t("Pending review")
+                : status === "approved"
+                  ? t("Applied")
+                  : t("Rejected")}
           </Badge>
+          {autoApproved && riskLevel ? (
+            <span
+              className="shrink-0 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+              title={
+                riskCode
+                  ? t("Risk: {reason}", {
+                      reason: riskReasonLabel(riskCode, t),
+                    })
+                  : undefined
+              }
+            >
+              {riskLevelLabel(riskLevel, t)}
+            </span>
+          ) : null}
           {isNewFile ? (
             <span className="shrink-0 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {t("New file")}

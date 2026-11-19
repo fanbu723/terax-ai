@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
@@ -23,13 +24,26 @@ import {
   normalizeHandle,
   type Snippet,
 } from "@/modules/ai/lib/snippets";
+import {
+  PERMISSION_MODE_ICONS,
+  permissionModeDescription,
+  permissionModeLabel,
+} from "@/modules/ai/lib/permissionCopy";
+import {
+  normalizePermissionMode,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from "@/modules/ai/lib/permissions";
 import { newAgentId, useAgentsStore } from "@/modules/ai/store/agentsStore";
 import {
   newSnippetId,
   useSnippetsStore,
 } from "@/modules/ai/store/snippetsStore";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { setCustomInstructions } from "@/modules/settings/store";
+import {
+  setAgentPermissionMode,
+  setCustomInstructions,
+} from "@/modules/settings/store";
 import {
   Add01Icon,
   CheckmarkCircle02Icon,
@@ -53,6 +67,7 @@ const ICON_OPTIONS: AgentIconId[] = [
 export function AgentsSection() {
   const t = useT();
   const customInstructions = usePreferencesStore((s) => s.customInstructions);
+  const permissionMode = usePreferencesStore((s) => s.agentPermissionMode);
   const customAgents = useAgentsStore((s) => s.customAgents);
   const activeAgentId = useAgentsStore((s) => s.activeId);
   const setActiveAgentId = useAgentsStore((s) => s.setActiveId);
@@ -81,6 +96,8 @@ export function AgentsSection() {
           "Personas and snippets the AI uses. Switch agents from the input bar.",
         )}
       />
+
+      <PermissionsBlock value={normalizePermissionMode(permissionMode)} />
 
       <CustomInstructionsBlock value={customInstructions} />
 
@@ -534,6 +551,74 @@ function SnippetEditorDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PermissionsBlock({ value }: { value: PermissionMode }) {
+  const t = useT();
+  return (
+    <section className="flex flex-col gap-2">
+      <Label>{t("Permissions")}</Label>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        {t(
+          "Default for new sessions. Switch the mode for the current session from the input bar.",
+        )}
+      </p>
+      <RadioGroup
+        value={value}
+        onValueChange={(next) => {
+          void setAgentPermissionMode(normalizePermissionMode(next));
+        }}
+        className="gap-2"
+      >
+        {PERMISSION_MODES.map((mode) => {
+          const Icon = PERMISSION_MODE_ICONS[mode];
+          const active = mode === value;
+          return (
+            <label
+              key={mode}
+              htmlFor={`permission-mode-${mode}`}
+              className={cn(
+                "flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors",
+                active
+                  ? "border-primary/40 bg-accent/30"
+                  : "border-border/60 hover:bg-muted/40",
+              )}
+            >
+              <RadioGroupItem
+                id={`permission-mode-${mode}`}
+                value={mode}
+                className="mt-0.5"
+              />
+              <HugeiconsIcon
+                icon={Icon}
+                size={14}
+                strokeWidth={1.75}
+                className={cn(
+                  "mt-0.5 shrink-0",
+                  mode === "allow-all" && active
+                    ? "text-destructive"
+                    : "text-muted-foreground",
+                )}
+              />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
+                  {permissionModeLabel(mode, t)}
+                  {mode === "assisted" ? (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                      {t("Recommended")}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[11px] leading-relaxed text-muted-foreground">
+                  {permissionModeDescription(mode, t)}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </RadioGroup>
+    </section>
   );
 }
 

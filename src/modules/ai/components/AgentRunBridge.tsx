@@ -1,6 +1,7 @@
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import type { ToolUIPart, UIMessagePart } from "ai";
 import { useEffect, useMemo, useRef } from "react";
+import type { RiskCode, RiskLevel } from "../lib/risk";
 import { native } from "../lib/native";
 import { checkReadable } from "../lib/security";
 import { resolvePath } from "../tools/tools";
@@ -10,6 +11,7 @@ import {
   type AgentRunStatus,
 } from "../store/chatStore";
 import { getOrCreateChat } from "../store/chatRuntime";
+import { useDiffReviewStore } from "../store/diffReviewStore";
 
 /**
  * Headless bridge that mirrors chat lifecycle into the store, so the status
@@ -30,7 +32,14 @@ export type DiffOpenInput = {
   proposedContent: string;
   approvalId: string;
   isNewFile: boolean;
+  autoApproved?: boolean;
+  riskLevel?: RiskLevel;
+  riskCode?: RiskCode;
+  activate?: boolean;
 };
+
+/** Newest auto-approved diffs that stay open; older ones close themselves. */
+const MAX_AUTO_DIFF_TABS = 6;
 
 export type AgentRunBridgeProps = {
   openAiDiffTab: (input: DiffOpenInput) => number | null;
@@ -54,11 +63,7 @@ type ToolPartLike = ToolUIPart & {
 
 type AnyPart = UIMessagePart<Record<string, never>, Record<string, never>>;
 
-function Bridge({
-  sessionId,
-  openAiDiffTab,
-  closeAiDiffTab,
-}: BridgeProps) {
+function Bridge({ sessionId, openAiDiffTab, closeAiDiffTab }: BridgeProps) {
   const chat = useMemo(() => getOrCreateChat(sessionId), [sessionId]);
   const { status, messages, addToolApprovalResponse } = useChat<UIMessage>({
     chat,
@@ -113,9 +118,7 @@ function Bridge({
     patch({
       status: runStatus,
       approvalsPending,
-      ...(runStatus === "idle" || runStatus === "error"
-        ? { step: null }
-        : {}),
+      ...(runStatus === "idle" || runStatus === "error" ? { step: null } : {}),
       ...(runStatus === "idle" ? { error: null } : {}),
     });
   }, [status, approvalsPending, patch]);
@@ -149,8 +152,7 @@ function Bridge({
           t === "tool-multi_edit"
         ) {
           const state = (p as { state?: string }).state ?? "";
-          const id =
-            (p as { approval?: { id?: string } }).approval?.id ?? "";
+          const id = (p as { approval?: { id?: string } }).approval?.id ?? "";
           fp += `${id}:${state}|`;
         }
       }
@@ -247,6 +249,50 @@ function Bridge({
       cancelled = true;
     };
   }, [messages, fileMutationFingerprint, openAiDiffTab, closeAiDiffTab]);
+
+  // ---- Post-hoc review of auto-approved mutations --------------------------
+  // These never produce an `approval-requested` part, so the tool records the
+  // before/after snapshot instead. Open one non-activating tab per entry and
+  // keep only the newest few so a long auto-approved run cannot bury the tab
+  // bar. Session switch resets the bookkeeping.
+  const autoDiffs = useDiffReviewStore((s) => s.entries);
+  const openedAutoRef = useRef<Set<string>>(new Set());
+  const autoTabOrderRef = useRef<string[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset bookkeeping when the session changes
+  useEffect(() => {
+    openedAutoRef.current = new Set();
+    autoTabOrderRef.current = [];
+  }, [sessionId]);
+
+  useEffect(() => {
+    const fresh = autoDiffs.filter(
+      (entry) =>
+        entry.sessionId === sessionId &&
+        !openedAutoRef.current.has(entry.toolCallId),
+    );
+    if (fresh.length === 0) return;
+    for (const entry of fresh) {
+      openedAutoRef.current.add(entry.toolCallId);
+      autoTabOrderRef.current.push(entry.toolCallId);
+      openAiDiffTab({
+        path: entry.path,
+        originalContent: entry.originalContent,
+        proposedContent: entry.proposedContent,
+        approvalId: entry.toolCallId,
+        isNewFile: entry.isNewFile,
+        autoApproved: true,
+        riskLevel: entry.level,
+        riskCode: entry.code,
+        activate: false,
+      });
+    }
+    while (autoTabOrderRef.current.length > MAX_AUTO_DIFF_TABS) {
+      const oldest = autoTabOrderRef.current.shift();
+      if (!oldest) break;
+      openedAutoRef.current.delete(oldest);
+      closeAiDiffTab(oldest);
+    }
+  }, [autoDiffs, sessionId, openAiDiffTab, closeAiDiffTab]);
 
   return null;
 }

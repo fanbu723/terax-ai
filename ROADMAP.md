@@ -84,6 +84,8 @@ The themes below frame every scope decision.
 - [x] Reusable prompt snippets via `#handle`
 - [x] Project memory and per-project configuration
 - [x] Tools with per-action approval gating (file write / edit, bash, and filesystem mutations)
+- [x] Three agent permission modes (manual, risk-assessed assisted, allow all) with per-session switching and a configurable default
+- [x] Deterministic tool-risk assessment, auto-approved mutations reviewed in a diff tab, and per-call annotations in the transcript
 - [x] Workspace file picker
 - [x] Auto-compact for long context
 
@@ -124,7 +126,7 @@ The themes below frame every scope decision.
 - [ ] AI agent reliability and workflow improvements (tool execution, context management, recovery, and long-running tasks)
 - [ ] Expand external coding-agent orchestration beyond Claude Code
 - [ ] Complete, extensible slash-command and reusable skills system
-- [ ] Approval flow improvements (YOLO / auto-approve, project-scoped policies, per-tool trust)
+- [ ] Project-scoped permission policies and per-tool trust overrides
 - [ ] Persistent terminal processes across app restarts
 
 ### Longer horizon

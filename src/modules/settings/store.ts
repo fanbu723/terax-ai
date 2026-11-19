@@ -5,6 +5,11 @@ import {
   normalizeAgentLaunchCommands,
 } from "@/modules/agents/lib/launcher";
 import {
+  DEFAULT_PERMISSION_MODE,
+  normalizePermissionMode,
+  type PermissionMode,
+} from "@/modules/ai/lib/permissions";
+import {
   type AutocompleteProviderId,
   type CustomEndpoint,
   DEFAULT_AUTOCOMPLETE_MODEL,
@@ -185,6 +190,9 @@ export type Preferences = {
   agentNotifications: boolean;
   agentNotificationSound: boolean;
   agentLaunchCommands: AgentLaunchCommands;
+  /** Default agent permission mode for new sessions; a composer switch
+   *  overrides it per session for the current app run only. */
+  agentPermissionMode: PermissionMode;
   defaultWorkspaceEnv: string;
   shortcuts: Record<ShortcutId, KeyBinding[]>;
   editorAutoSave: boolean;
@@ -229,6 +237,7 @@ export type LspCustomServer = {
 const STORE_PATH = "terax-settings.json";
 const KEY_UI_LANGUAGE = "uiLanguage";
 const KEY_UI_FONT_FAMILY = "uiFontFamily";
+const KEY_AGENT_PERMISSION_MODE = "agentPermissionMode";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
 const KEY_BG_KIND = "backgroundKind";
@@ -385,6 +394,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   agentNotifications: true,
   agentNotificationSound: true,
   agentLaunchCommands: DEFAULT_AGENT_LAUNCH_COMMANDS,
+  agentPermissionMode: DEFAULT_PERMISSION_MODE,
   defaultWorkspaceEnv: "local",
   shortcuts: {} as Record<ShortcutId, KeyBinding[]>,
   editorAutoSave: false,
@@ -580,6 +590,9 @@ export async function loadPreferences(): Promise<Preferences> {
       DEFAULT_PREFERENCES.agentNotificationSound,
     agentLaunchCommands: normalizeAgentLaunchCommands(
       get<unknown>(KEY_AGENT_LAUNCH_COMMANDS),
+    ),
+    agentPermissionMode: normalizePermissionMode(
+      get<unknown>(KEY_AGENT_PERMISSION_MODE),
     ),
     defaultWorkspaceEnv:
       get<string>(KEY_DEFAULT_WORKSPACE_ENV) ??
@@ -996,6 +1009,12 @@ export async function setAgentNotificationSound(value: boolean): Promise<void> {
   await writePref(KEY_AGENT_NOTIFICATION_SOUND, value);
 }
 
+export async function setAgentPermissionMode(
+  value: PermissionMode,
+): Promise<void> {
+  await writePref(KEY_AGENT_PERMISSION_MODE, normalizePermissionMode(value));
+}
+
 export async function setAgentLaunchCommands(
   value: AgentLaunchCommands,
 ): Promise<void> {
@@ -1080,6 +1099,7 @@ export async function onPreferencesChange(
     [KEY_AGENT_NOTIFICATIONS]: "agentNotifications",
     [KEY_AGENT_NOTIFICATION_SOUND]: "agentNotificationSound",
     [KEY_AGENT_LAUNCH_COMMANDS]: "agentLaunchCommands",
+    [KEY_AGENT_PERMISSION_MODE]: "agentPermissionMode",
     [KEY_DEFAULT_WORKSPACE_ENV]: "defaultWorkspaceEnv",
     [KEY_SHORTCUTS]: "shortcuts",
     [KEY_EDITOR_AUTO_SAVE]: "editorAutoSave",

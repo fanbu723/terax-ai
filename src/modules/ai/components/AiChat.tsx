@@ -719,6 +719,7 @@ const RenderedTool = memo(function RenderedTool({
       input={part.input}
       output={"output" in part ? part.output : undefined}
       errorText={"errorText" in part ? part.errorText : undefined}
+      toolCallId={part.toolCallId}
       defaultOpen={toolName === "list_directory"}
     />
   );

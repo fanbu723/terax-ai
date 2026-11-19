@@ -1,12 +1,22 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { approvalFor } from "../lib/approvalGate";
 import { native } from "../lib/native";
 import { checkWritableCanonical } from "../lib/security";
+import { autoDiffFor, useDiffReviewStore } from "../store/diffReviewStore";
 import { newQueuedEditId, usePlanStore } from "../store/planStore";
 import { resolvePath, type ToolContext } from "./context";
 
 type EditResult =
-  | { ok: true; replacements: number; bytesWritten: number; path: string }
+  | {
+      ok: true;
+      replacements: number;
+      bytesWritten: number;
+      path: string;
+      /** Pre/post contents, used only to open the post-hoc diff tab. */
+      originalContent: string;
+      proposedContent: string;
+    }
   | { error: string; path: string };
 
 function djb2(s: string): number {
@@ -22,8 +32,7 @@ async function applyEdits(
   readCache: Map<string, { size: number; hash: number }>,
 ): Promise<EditResult> {
   const r = await native.readFile(abs);
-  if (r.kind === "binary")
-    return { error: "binary file refused", path: abs };
+  if (r.kind === "binary") return { error: "binary file refused", path: abs };
   if (r.kind === "toolarge")
     return { error: `file too large (${r.size} bytes)`, path: abs };
 
@@ -100,6 +109,8 @@ async function applyEdits(
       replacements: totalReplacements,
       bytesWritten: content.length,
       path: abs,
+      originalContent: original,
+      proposedContent: content,
     };
   }
 
@@ -111,29 +122,71 @@ async function applyEdits(
       replacements: totalReplacements,
       bytesWritten: content.length,
       path: abs,
+      originalContent: original,
+      proposedContent: content,
     };
   } catch (err) {
     return { error: String(err), path: abs };
   }
 }
 
+/**
+ * Record an auto-approved mutation for the post-hoc diff tab, then strip the
+ * contents from the tool result: file bodies must not be paid for twice in
+ * the model's context.
+ */
+function finalizeEditResult(
+  result: EditResult,
+  toolCallId: string,
+  ctx: ToolContext,
+) {
+  if ("error" in result) return result;
+  const auto = autoDiffFor(toolCallId, ctx.getSessionId());
+  if (auto) {
+    useDiffReviewStore.getState().record({
+      toolCallId,
+      sessionId: ctx.getSessionId(),
+      path: result.path,
+      originalContent: result.originalContent,
+      proposedContent: result.proposedContent,
+      isNewFile: false,
+      level: auto.level,
+      code: auto.code,
+    });
+  }
+  return {
+    ok: true as const,
+    replacements: result.replacements,
+    bytesWritten: result.bytesWritten,
+    path: result.path,
+  };
+}
+
 export function buildEditTools(ctx: ToolContext) {
   return {
     edit: tool({
       description:
-        "Replace an exact string in a file. Requires read_file on this path first in the current session — this prevents blind edits. `old_string` must be unique in the file unless `replace_all: true`. Asks for user approval before writing.",
+        "Replace an exact string in a file. Requires read_file on this path first in the current session — this prevents blind edits. `old_string` must be unique in the file unless `replace_all: true`. Whether it asks first depends on the permission mode.",
       inputSchema: z.object({
         path: z.string(),
         old_string: z
           .string()
-          .describe("Exact substring to replace. Must be unique unless replace_all."),
+          .describe(
+            "Exact substring to replace. Must be unique unless replace_all.",
+          ),
         new_string: z.string().describe("Replacement substring."),
         replace_all: z.boolean().optional(),
       }),
-      needsApproval: true,
-      execute: async ({ path, old_string, new_string, replace_all }) => {
+      needsApproval: approvalFor("edit", ctx),
+      execute: async (
+        { path, old_string, new_string, replace_all },
+        { toolCallId },
+      ) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         if (!ctx.readCache.has(abs)) {
@@ -143,18 +196,22 @@ export function buildEditTools(ctx: ToolContext) {
             path: abs,
           };
         }
-        return applyEdits(
-          abs,
-          [{ old_string, new_string, replace_all }],
-          "edit",
-          ctx.readCache,
+        return finalizeEditResult(
+          await applyEdits(
+            abs,
+            [{ old_string, new_string, replace_all }],
+            "edit",
+            ctx.readCache,
+          ),
+          toolCallId,
+          ctx,
         );
       },
     }),
 
     multi_edit: tool({
       description:
-        "Apply several exact-string replacements to a single file atomically. Each edit is applied in order to the running buffer; if any edit's old_string is missing or non-unique, the whole batch aborts before writing. Requires prior read_file on the path. Asks for user approval before writing.",
+        "Apply several exact-string replacements to a single file atomically. Each edit is applied in order to the running buffer; if any edit's old_string is missing or non-unique, the whole batch aborts before writing. Requires prior read_file on the path. Whether it asks first depends on the permission mode.",
       inputSchema: z.object({
         path: z.string(),
         edits: z
@@ -167,10 +224,13 @@ export function buildEditTools(ctx: ToolContext) {
           )
           .min(1),
       }),
-      needsApproval: true,
-      execute: async ({ path, edits }) => {
+      needsApproval: approvalFor("multi_edit", ctx),
+      execute: async ({ path, edits }, { toolCallId }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         if (!ctx.readCache.has(abs)) {
@@ -180,7 +240,11 @@ export function buildEditTools(ctx: ToolContext) {
             path: abs,
           };
         }
-        return applyEdits(abs, edits, "multi_edit", ctx.readCache);
+        return finalizeEditResult(
+          await applyEdits(abs, edits, "multi_edit", ctx.readCache),
+          toolCallId,
+          ctx,
+        );
       },
     }),
   } as const;

@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { useManagedAgentsStore } from "@/modules/agents/store/managedAgentsStore";
 import { writeToSession } from "@/modules/terminal";
+import { approvalFor } from "../lib/approvalGate";
 import type { ToolContext } from "./context";
 
 // Claude Code's TUI treats a trailing CR in the same write chunk as the text
@@ -26,7 +27,7 @@ export function buildManagedAgentTools(ctx: ToolContext) {
   return {
     spawn_coding_agent: tool({
       description:
-        "Spawn a Claude Code agent in a new terminal tab and give it the prompt. Use this when the user (via /claude-code) wants work delegated and no agent is active yet in this session. Craft a complete, self-contained prompt first; the user approves it before the agent starts. Do not call this if an agent is already active — use send_to_agent instead.",
+        "Spawn a Claude Code agent in a new terminal tab and give it the prompt. Use this when the user (via /claude-code) wants work delegated and no agent is active yet in this session. Craft a complete, self-contained prompt first; approval depends on the permission mode. Do not call this if an agent is already active — use send_to_agent instead.",
       inputSchema: z.object({
         prompt: z
           .string()
@@ -35,7 +36,7 @@ export function buildManagedAgentTools(ctx: ToolContext) {
             "The full, self-contained task prompt for the Claude Code agent.",
           ),
       }),
-      needsApproval: true,
+      needsApproval: approvalFor("spawn_coding_agent", ctx),
       execute: async ({ prompt }) => {
         const sessionId = ctx.getSessionId();
         if (!sessionId) return { error: "no active chat session" };
@@ -67,7 +68,7 @@ export function buildManagedAgentTools(ctx: ToolContext) {
             "One clear, self-contained instruction for the agent. No control characters.",
           ),
       }),
-      needsApproval: true,
+      needsApproval: approvalFor("send_to_agent", ctx),
       execute: async ({ instruction }) => {
         const sessionId = ctx.getSessionId();
         const store = useManagedAgentsStore.getState();
@@ -89,7 +90,11 @@ export function buildManagedAgentTools(ctx: ToolContext) {
         }
         setTimeout(() => writeToSession(managed.leafId, "\r"), SUBMIT_DELAY_MS);
         store.bumpRound(managed.leafId);
-        return { ok: true, sent: oneLine, round: store.get(managed.leafId)?.rounds };
+        return {
+          ok: true,
+          sent: oneLine,
+          round: store.get(managed.leafId)?.rounds,
+        };
       },
     }),
 
@@ -103,7 +108,9 @@ export function buildManagedAgentTools(ctx: ToolContext) {
           .min(1)
           .max(400)
           .optional()
-          .describe("Trailing lines of the agent terminal to return. Default 120."),
+          .describe(
+            "Trailing lines of the agent terminal to return. Default 120.",
+          ),
       }),
       execute: async ({ lines }) => {
         const sessionId = ctx.getSessionId();
