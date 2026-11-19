@@ -19,6 +19,9 @@ const HEAVY = [
   // The Catppuccin icon set (~300 kB). Only `explorer/lib/iconEngine.ts` may
   // import it, and only behind the dynamic import in `iconResolver.ts`.
   "@iconify-json",
+  // The ACP client for the DSH console: only the lazily loaded console chunk
+  // may import it, never the composer's eager graph.
+  "@agentclientprotocol",
 ];
 
 function heavyEagerHits(entry: string): string[] {
