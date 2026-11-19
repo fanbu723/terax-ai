@@ -187,8 +187,10 @@ pub async fn pty_open(
     let workspace = WorkspaceEnv::from_option(workspace);
     let blocks = blocks.unwrap_or(false);
     // A Windows helper cannot execute inside WSL without explicit path and
-    // network translation. Do not inject credentials for a broken command.
-    let control_env = if workspace.is_wsl() {
+    // network translation, and the control server listens on this machine's
+    // loopback while a remote shell runs elsewhere. Do not inject credentials
+    // for a broken command.
+    let control_env = if workspace.is_wsl() || workspace.is_remote() {
         None
     } else {
         pane_id.and_then(|pane_id| control.shell_env(pane_id))
@@ -201,6 +203,19 @@ pub async fn pty_open(
     let hub = state.hub.clone();
     let class = presentation.unwrap_or_default();
     let session = tauri::async_runtime::spawn_blocking(move || {
+        // Prepare the OpenSSH invocation before the shell is spawned: it needs
+        // the host record, and a failure must fail the tab instead of opening a
+        // local shell in a remote workspace.
+        let ssh_launch = if workspace.is_remote() {
+            let host_id = workspace.ssh_host_id().unwrap_or_default();
+            let host = app.state::<crate::modules::ssh::SshState>().host(host_id)?;
+            Some(crate::modules::ssh::exec::pty_launch(
+                &host,
+                cwd.as_deref(),
+            )?)
+        } else {
+            None
+        };
         // Authorizing the directory canonicalizes it, which touches the disk
         // (a network volume, or wsl.exe for a WSL workspace): never on a worker.
         let cwd = user_spawn_cwd_or_home(
@@ -223,6 +238,7 @@ pub async fn pty_open(
             control_env,
             colors,
             pane_id,
+            ssh_launch,
         )
     })
     .await
@@ -370,6 +386,11 @@ pub fn pty_has_foreground_process(state: tauri::State<PtyState>, id: u32) -> Res
         log::warn!("pty_has_foreground_process: unknown session id={id}");
         "no session".to_string()
     })?;
+    if session.remote {
+        // The local child is the ssh client: it has no local children, so the
+        // host cannot answer whether a remote job owns the remote tty.
+        return Ok(false);
+    }
     let shell_pid = session.shell_pid;
     if shell_pid == 0 {
         return Ok(false);
@@ -387,6 +408,9 @@ pub fn pty_has_foreground_job(state: tauri::State<PtyState>, id: u32) -> Result<
         log::warn!("pty_has_foreground_job: unknown session id={id}");
         "no session".to_string()
     })?;
+    if session.remote {
+        return Ok(false);
+    }
     let shell_pid = session.shell_pid;
     if shell_pid == 0 {
         return Ok(false);

@@ -207,7 +207,7 @@ pub fn run_grep(
         return Err("empty pattern".into());
     }
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root_path = resolve_path(&root, &workspace);
+    let root_path = resolve_path(&root, &workspace)?;
     if !root_path.is_dir() {
         return Err(format!("not a directory: {root}"));
     }
@@ -266,7 +266,7 @@ pub fn run_grep_interactive(
         return Err("empty pattern".into());
     }
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root_path = resolve_path(&root, &workspace);
+    let root_path = resolve_path(&root, &workspace)?;
     if !root_path.is_dir() {
         return Err(format!("not a directory: {root}"));
     }
@@ -317,7 +317,7 @@ pub fn run_glob(
         return Err("empty pattern".into());
     }
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root_path = resolve_path(&root, &workspace);
+    let root_path = resolve_path(&root, &workspace)?;
     if !root_path.is_dir() {
         return Err(format!("not a directory: {root}"));
     }

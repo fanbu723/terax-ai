@@ -43,10 +43,16 @@ fn workspace_cache_key(workspace: &WorkspaceEnv) -> String {
     match workspace {
         WorkspaceEnv::Local => "local".into(),
         WorkspaceEnv::Wsl { distro } => format!("wsl:{distro}"),
+        WorkspaceEnv::Ssh { host_id } => format!("ssh:{host_id}"),
     }
 }
 
 pub fn ensure_git_available(workspace: &WorkspaceEnv) -> Result<()> {
+    if workspace.is_remote() {
+        return Err(GitError::Unsupported(
+            "source control is not available for SSH remote workspaces yet",
+        ));
+    }
     let cache_key = workspace_cache_key(workspace);
     let cached = {
         let mut guard = availability_cell()
@@ -444,6 +450,11 @@ fn build_git_command(
     cwd: Option<&str>,
     args: &[OsString],
 ) -> Result<Command> {
+    if _workspace.is_remote() {
+        return Err(GitError::Unsupported(
+            "source control is not available for SSH remote workspaces yet",
+        ));
+    }
     #[cfg(windows)]
     if let WorkspaceEnv::Wsl { distro } = _workspace {
         validate_wsl_distro_name(distro)

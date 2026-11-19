@@ -3,6 +3,7 @@ use super::{
     mutate::{note_dir_changed, rename_no_replace},
     to_canon,
 };
+use crate::modules::ssh::{route as ssh_route, snapshot_if_remote, SshState};
 use crate::modules::workspace::{resolve_path, WorkspaceEnv, WorkspaceRegistry};
 use serde::Serialize;
 use std::ffi::{OsStr, OsString};
@@ -29,12 +30,24 @@ pub struct CopyFailure {
 #[tauri::command]
 pub async fn fs_copy(
     app: tauri::AppHandle,
+    ssh: tauri::State<'_, SshState>,
     sources: Vec<String>,
     dest_dir: String,
     root: String,
     workspace: Option<WorkspaceEnv>,
     rename_on_conflict: Option<bool>,
 ) -> Result<CopyResult, String> {
+    let rename_on_conflict = rename_on_conflict.unwrap_or(false);
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return tauri::async_runtime::spawn_blocking(move || {
+            let root = ssh_route::require_root(&remote, &root)?;
+            ssh_route::require_within(&root, &remote.normalize(&dest_dir)?)?;
+            ssh_route::copy(&remote, &sources, &dest_dir, rename_on_conflict)
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+    }
     tauri::async_runtime::spawn_blocking(move || {
         copy_batch(
             sources,
@@ -43,7 +56,7 @@ pub async fn fs_copy(
             &WorkspaceEnv::from_option(workspace),
             &app.state::<WorkspaceRegistry>(),
             &app.state::<FileIndexState>(),
-            rename_on_conflict.unwrap_or(false),
+            rename_on_conflict,
         )
     })
     .await
@@ -56,8 +69,8 @@ fn copy_destination(
     workspace: &WorkspaceEnv,
     registry: &WorkspaceRegistry,
 ) -> Result<PathBuf, String> {
-    let root = resolve_path(root, workspace);
-    let dest = resolve_path(dest_dir, workspace);
+    let root = resolve_path(root, workspace)?;
+    let dest = resolve_path(dest_dir, workspace)?;
     if !root.is_absolute() || !dest.is_absolute() {
         return Err("copy destination and workspace root must be absolute".into());
     }

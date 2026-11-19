@@ -12,14 +12,15 @@ use tempfile::NamedTempFile;
 use super::blocking;
 use super::index::FileIndexState;
 use super::mutate::note_changed;
+use crate::modules::ssh::{route as ssh_route, snapshot_if_remote, SshState};
 use crate::modules::workspace::{resolve_path, WorkspaceEnv};
 
-const MAX_READ_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
+pub(crate) const MAX_READ_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
 /// Ceiling for explicit "open anyway"; mirrored as FORCE_READ_LIMIT in useDocument.ts.
-const FORCE_MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
-const BINARY_SNIFF_BYTES: usize = 8 * 1024;
+pub(crate) const FORCE_MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
+pub(crate) const BINARY_SNIFF_BYTES: usize = 8 * 1024;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum ReadResult {
     Text {
@@ -37,7 +38,7 @@ pub enum ReadResult {
     },
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StatKind {
     File,
@@ -45,7 +46,7 @@ pub enum StatKind {
     Symlink,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct FileStat {
     pub size: u64,
     pub mtime: u64,
@@ -62,13 +63,18 @@ fn mtime_millis(meta: &fs::Metadata) -> u64 {
 
 #[tauri::command]
 pub async fn fs_read_file(
+    ssh: tauri::State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
     force: Option<bool>,
 ) -> Result<ReadResult, String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        read_file_sync(&resolve_path(&path, &workspace), force.unwrap_or(false))
+        if let Some(remote) = remote {
+            return ssh_route::read_file(&remote, &path, force.unwrap_or(false));
+        }
+        read_file_sync(&resolve_path(&path, &workspace)?, force.unwrap_or(false))
     })
     .await
 }
@@ -167,11 +173,16 @@ pub async fn fs_write_file(
     source: Option<String>,
     app: tauri::AppHandle,
     index: tauri::State<'_, FileIndexState>,
+    ssh: tauri::State<'_, SshState>,
 ) -> Result<u64, String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::write_file(&remote, &path, &content)).await;
+    }
     let index = index.inner().clone();
     let (path, mtime) = blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let target = resolve_path(&path, &workspace);
+        let target = resolve_path(&path, &workspace)?;
         let original = fs::metadata(&target).ok();
         write_atomic(&target, content.as_bytes()).map_err(|e| {
             log::warn!("fs_write_file({}) failed: {e}", target.display());
@@ -195,41 +206,64 @@ pub async fn fs_write_file(
 
 #[tauri::command]
 pub async fn fs_canonicalize(
+    ssh: tauri::State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
     local_only: Option<bool>,
 ) -> Result<String, String> {
     validate_link_path(&path, local_only)?;
-    blocking(move || {
-        let workspace = WorkspaceEnv::from_option(workspace);
-        #[cfg(windows)]
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
         if local_only == Some(true) {
-            let canon =
-                super::local_file::canonicalize(&super::local_file::open(&path, &workspace)?)?;
-            return match &workspace {
-                WorkspaceEnv::Wsl { distro } => canonical_wsl_path(&canon, distro),
-                WorkspaceEnv::Local => Ok(canon),
-            };
+            return Err("a remote path is not a local file link".into());
         }
-        let p = resolve_path(&path, &workspace);
-        let canon = std::fs::canonicalize(&p).map_err(|e| e.to_string())?;
-        let canon = super::to_canon(&canon);
-        #[cfg(windows)]
-        if let WorkspaceEnv::Wsl { distro } = &workspace {
-            return canonical_wsl_path(&canon, distro);
-        }
-        Ok(canon)
-    })
-    .await
+        return blocking(move || ssh_route::canonicalize(&remote, &path)).await;
+    }
+    blocking(move || canonicalize_path(path, workspace, local_only)).await
+}
+
+/// The local canonicalize body, split out so unit tests can call it without a
+/// Tauri `State`.
+fn canonicalize_path(
+    path: String,
+    workspace: Option<WorkspaceEnv>,
+    #[cfg_attr(not(windows), allow(unused_variables))] local_only: Option<bool>,
+) -> Result<String, String> {
+    let workspace = WorkspaceEnv::from_option(workspace);
+    #[cfg(windows)]
+    if local_only == Some(true) {
+        let canon = super::local_file::canonicalize(&super::local_file::open(&path, &workspace)?)?;
+        return match &workspace {
+            WorkspaceEnv::Wsl { distro } => canonical_wsl_path(&canon, distro),
+            WorkspaceEnv::Local => Ok(canon),
+        };
+    }
+    let p = resolve_path(&path, &workspace)?;
+    let canon = std::fs::canonicalize(&p).map_err(|e| e.to_string())?;
+    let canon = super::to_canon(&canon);
+    #[cfg(windows)]
+    if let WorkspaceEnv::Wsl { distro } = &workspace {
+        return canonical_wsl_path(&canon, distro);
+    }
+    Ok(canon)
 }
 
 #[tauri::command]
 pub async fn fs_stat(
+    ssh: tauri::State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
     local_only: Option<bool>,
 ) -> Result<FileStat, String> {
     validate_link_path(&path, local_only)?;
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || {
+            ssh_route::stat(&remote, &path)?
+                .ok_or_else(|| format!("no such file or directory: {path}"))
+        })
+        .await;
+    }
     blocking(move || {
         #[cfg(windows)]
         if local_only == Some(true) {
@@ -295,7 +329,7 @@ fn validate_link_path(path: &str, local_only: Option<bool>) -> Result<(), String
 
 fn stat_path(path: String, workspace: Option<WorkspaceEnv>) -> Result<FileStat, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
-    let p = resolve_path(&path, &workspace);
+    let p = resolve_path(&path, &workspace)?;
     let meta = std::fs::metadata(&p).map_err(|e| e.to_string())?;
     if !meta.is_file() && !meta.is_dir() {
         return Err("only regular files and directories can be opened".into());
@@ -353,8 +387,7 @@ mod tests {
                 .err()
                 .unwrap()
                 .contains("regular"));
-            assert!(fs_stat(path.to_string_lossy().into_owned(), None, None)
-                .await
+            assert!(stat_path(path.to_string_lossy().into_owned(), None)
                 .err()
                 .unwrap()
                 .contains("regular"));
@@ -433,16 +466,7 @@ mod tests {
             r"\/.\pipe\name",
         ] {
             let expected = "network and device paths are not local file links";
-            assert_eq!(
-                fs_stat(path.into(), None, Some(true)).await.err().unwrap(),
-                expected
-            );
-            assert_eq!(
-                fs_canonicalize(path.into(), None, Some(true))
-                    .await
-                    .unwrap_err(),
-                expected
-            );
+            assert_eq!(validate_link_path(path, Some(true)).unwrap_err(), expected);
             assert!(validate_link_path(path, None).is_ok());
         }
     }
@@ -462,12 +486,9 @@ mod tests {
             .join("build/../main.ts")
             .to_string_lossy()
             .into_owned();
+        assert_eq!(stat_path(path.clone(), None).unwrap().size, 7);
         assert_eq!(
-            fs_stat(path.clone(), None, Some(true)).await.unwrap().size,
-            7
-        );
-        assert_eq!(
-            fs_canonicalize(path, None, Some(true)).await.unwrap(),
+            super::super::to_canon(std::fs::canonicalize(&path).unwrap()),
             super::super::to_canon(std::fs::canonicalize(external.join("main.ts")).unwrap())
         );
     }

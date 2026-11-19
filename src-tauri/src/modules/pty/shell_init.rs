@@ -56,7 +56,23 @@ pub fn build_command(
     blocks: bool,
     shell: Option<String>,
     control: Option<ShellControlEnv>,
+    ssh_launch: Option<super::super::ssh::exec::PtyLaunch>,
 ) -> Result<CommandBuilder, String> {
+    // A remote terminal is the OpenSSH client inside the local PTY: the remote
+    // login shell, plugin scripts and path translation all belong to the host.
+    if workspace.is_remote() {
+        let launch = ssh_launch
+            .ok_or_else(|| "SSH terminal launch was not prepared for this workspace".to_string())?;
+        let mut cmd = CommandBuilder::new(launch.program);
+        for arg in &launch.args {
+            cmd.arg(arg);
+        }
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        cmd.env("TERAX_SSH_LOGIN_SHELL", &launch.login_shell);
+        return Ok(cmd);
+    }
+    let _ = ssh_launch;
     let shell = sanitize_shell_override(shell);
     #[cfg(unix)]
     {
@@ -69,7 +85,8 @@ pub fn build_command(
     }
 }
 
-/// Preserve the shell behind the WSL launcher for shell-specific input quoting.
+/// Preserve the shell behind a launcher (WSL or ssh) for shell-specific input
+/// quoting.
 pub fn launched_shell(cmd: &mut CommandBuilder) -> String {
     let program = cmd
         .get_argv()
@@ -83,9 +100,24 @@ pub fn launched_shell(cmd: &mut CommandBuilder) -> String {
             .unwrap_or_default();
         cmd.env_remove("TERAX_WSL_LOGIN_SHELL");
         shell
+    } else if is_ssh_program(&program) {
+        let shell = cmd
+            .get_env("TERAX_SSH_LOGIN_SHELL")
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        cmd.env_remove("TERAX_SSH_LOGIN_SHELL");
+        shell
     } else {
         program
     }
+}
+
+/// Whether a launcher program is the OpenSSH client (`ssh`, `ssh.exe`).
+fn is_ssh_program(program: &str) -> bool {
+    std::path::Path::new(program)
+        .file_name()
+        .map(|name| name.to_string_lossy().to_ascii_lowercase())
+        .is_some_and(|name| name == "ssh" || name == "ssh.exe")
 }
 
 #[cfg(test)]

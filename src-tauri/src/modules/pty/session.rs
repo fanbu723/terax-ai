@@ -56,6 +56,10 @@ pub struct Session {
     _job: Option<crate::modules::proc::job::ProcessJob>,
     /// PID of the shell process. 0 means unknown; callers must skip checks when 0.
     pub shell_pid: u32,
+    /// True when this PTY hosts the OpenSSH client for a remote workspace. The
+    /// local child is ssh, so host-side process inspection says nothing about
+    /// the remote job and callers must not claim otherwise.
+    pub remote: bool,
     pub shell_program: String,
     /// Frontend pane (leaf) this terminal belongs to, when it reported one.
     pub pane_id: Option<u32>,
@@ -249,10 +253,12 @@ pub fn spawn(
     control: Option<crate::modules::control::ShellControlEnv>,
     colors: Option<TerminalColors>,
     pane_id: Option<u32>,
+    ssh_launch: Option<crate::modules::ssh::exec::PtyLaunch>,
 ) -> Result<Arc<Session>, String> {
+    let remote = ssh_launch.is_some();
     let emitter = app.clone();
     let notifier = app.clone();
-    spawn_with(
+    spawn_with_remote(
         Host {
             id,
             owner,
@@ -281,14 +287,25 @@ pub fn spawn(
             pixel_width: 0,
             pixel_height: 0,
         },
-        move || shell_init::build_command(cwd, workspace, blocks, shell, control),
+        move || shell_init::build_command(cwd, workspace, blocks, shell, control, ssh_launch),
+        remote,
     )
 }
 
+#[cfg(test)]
 pub(super) fn spawn_with(
     host: Host,
     size: PtySize,
     build_command: impl FnOnce() -> Result<CommandBuilder, String>,
+) -> Result<Arc<Session>, String> {
+    spawn_with_remote(host, size, build_command, false)
+}
+
+fn spawn_with_remote(
+    host: Host,
+    size: PtySize,
+    build_command: impl FnOnce() -> Result<CommandBuilder, String>,
+    remote: bool,
 ) -> Result<Arc<Session>, String> {
     #[cfg(windows)]
     let _spawn_guard = lock_lifecycle(&CONPTY_LIFECYCLE_LOCK);
@@ -365,6 +382,7 @@ pub(super) fn spawn_with(
         _job: job,
         shell_pid,
         shell_program,
+        remote,
         pane_id,
         link: link.clone(),
         owner,

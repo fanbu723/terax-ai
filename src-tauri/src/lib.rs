@@ -219,7 +219,9 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("asset", fs::assets::serve)
         .on_page_load(|webview, payload| {
             if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
-                if let Some(grants) = webview.try_state::<fs::assets::AssetGrants>() { grants.revoke_owner(webview.label()); }
+                if let Some(grants) = webview.try_state::<fs::assets::AssetGrants>() {
+                    grants.revoke_owner(webview.label());
+                }
                 if let Some(state) = webview.try_state::<net::AiStreamState>() {
                     state.cancel_window(webview.window().label());
                 }
@@ -243,6 +245,12 @@ pub fn run() {
             if let Err(error) = control::start(_app.handle().clone(), control_for_setup.clone()) {
                 log::warn!("could not start Terax control server: {error}");
             }
+            let config_dir = _app.path().app_config_dir().unwrap_or_else(|_| {
+                dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("terax")
+            });
+            _app.manage(modules::ssh::SshState::load(&config_dir));
             #[cfg(target_os = "macos")]
             if let Some(main) = _app.get_webview_window("main") {
                 let handle = _app.handle().clone();
@@ -387,6 +395,13 @@ pub fn run() {
             workspace::ipc::wsl_home,
             workspace::workspace_authorize,
             workspace::workspace_current_dir,
+            modules::ssh::ssh_hosts_list,
+            modules::ssh::ssh_host_add,
+            modules::ssh::ssh_host_update,
+            modules::ssh::ssh_host_remove,
+            modules::ssh::ssh_probe,
+            modules::ssh::ssh_home,
+            modules::ssh::ssh_authorize_root,
             control::control_frontend_ready,
             control::control_respond,
             modules::agent_events::agent_decisions_ready,
@@ -435,7 +450,9 @@ pub fn run() {
                     event: tauri::WindowEvent::Destroyed,
                     ..
                 } => {
-                    if let Some(grants) = app.try_state::<fs::assets::AssetGrants>() { grants.revoke_owner(&label); }
+                    if let Some(grants) = app.try_state::<fs::assets::AssetGrants>() {
+                        grants.revoke_owner(&label);
+                    }
                     if let Some(state) = app.try_state::<net::AiStreamState>() {
                         state.cancel_window(&label);
                     }

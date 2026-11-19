@@ -6,11 +6,14 @@ use serde::Serialize;
 
 use super::run_blocking_inner;
 use crate::modules::fs::to_canon;
-use crate::modules::workspace::{resolve_path, WorkspaceEnv};
+use crate::modules::ssh::hosts::SshHost;
+use crate::modules::workspace::{resolve_path, validate_remote_path, WorkspaceEnv};
 
 pub struct ShellSession {
     pub cwd: Mutex<String>,
     pub workspace: WorkspaceEnv,
+    /// Host snapshot for an SSH workspace; `None` for a local one.
+    pub host: Option<SshHost>,
     pub pristine: AtomicBool,
     #[allow(dead_code)]
     pub started_at_ms: u64,
@@ -43,7 +46,7 @@ fn generate_sentinel() -> String {
 }
 
 impl ShellSession {
-    pub fn new(initial_cwd: String, workspace: WorkspaceEnv) -> Self {
+    pub fn new(initial_cwd: String, workspace: WorkspaceEnv, host: Option<SshHost>) -> Self {
         let started_at_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as u64)
@@ -51,6 +54,7 @@ impl ShellSession {
         Self {
             cwd: Mutex::new(initial_cwd),
             workspace,
+            host,
             pristine: AtomicBool::new(true),
             started_at_ms,
             sentinel: generate_sentinel(),
@@ -76,9 +80,15 @@ impl ShellSession {
         if self.pristine.load(Ordering::Acquire) {
             if let Some(hint) = cwd_hint.filter(|s| !s.is_empty()) {
                 let effective_workspace = workspace_hint.as_ref().unwrap_or(&self.workspace);
-                let p = resolve_path(&hint, effective_workspace);
-                if p.is_dir() {
-                    *self.cwd.lock().unwrap() = hint;
+                if effective_workspace.is_remote() {
+                    if validate_remote_path(&hint).is_ok() {
+                        *self.cwd.lock().unwrap() = hint;
+                    }
+                } else {
+                    let p = resolve_path(&hint, effective_workspace)?;
+                    if p.is_dir() {
+                        *self.cwd.lock().unwrap() = hint;
+                    }
                 }
             }
         }
@@ -86,14 +96,26 @@ impl ShellSession {
         let effective_workspace = workspace_hint.unwrap_or_else(|| self.workspace.clone());
         let wrapped = wrap_with_sentinel(&trimmed, &effective_workspace, &self.sentinel);
 
-        let raw = run_blocking_inner(wrapped, Some(cwd.clone()), effective_workspace, timeout)?;
+        let raw = run_blocking_inner(
+            wrapped,
+            Some(cwd.clone()),
+            effective_workspace,
+            timeout,
+            self.host.clone(),
+        )?;
         self.pristine.store(false, Ordering::Release);
 
         let (stdout_clean, cwd_after) = strip_cwd_sentinel(&raw.stdout, &cwd, &self.sentinel);
         if let Some(ref new_cwd) = cwd_after {
-            let p = resolve_path(new_cwd, &self.workspace);
-            if p.is_dir() {
-                *self.cwd.lock().unwrap() = new_cwd.clone();
+            if self.workspace.is_remote() {
+                if validate_remote_path(new_cwd).is_ok() {
+                    *self.cwd.lock().unwrap() = new_cwd.clone();
+                }
+            } else {
+                let p = resolve_path(new_cwd, &self.workspace)?;
+                if p.is_dir() {
+                    *self.cwd.lock().unwrap() = new_cwd.clone();
+                }
             }
         }
         let resolved_cwd = to_canon(self.current_cwd());
@@ -148,8 +170,8 @@ mod tests {
 
     #[test]
     fn sentinels_are_unique_per_session() {
-        let a = ShellSession::new("/tmp".into(), WorkspaceEnv::Local);
-        let b = ShellSession::new("/tmp".into(), WorkspaceEnv::Local);
+        let a = ShellSession::new("/tmp".into(), WorkspaceEnv::Local, None);
+        let b = ShellSession::new("/tmp".into(), WorkspaceEnv::Local, None);
         assert_ne!(a.sentinel, b.sentinel);
         assert!(a.sentinel.starts_with("__TERAX_CWD_"));
         assert!(a.sentinel.ends_with("__"));
@@ -158,7 +180,7 @@ mod tests {
 
     #[test]
     fn strip_uses_session_sentinel_only() {
-        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local);
+        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local, None);
         let attacker = "__TERAX_CWD_0000000000000000_0000000000000000__/evil";
         let trailer = format!("\n{}/real\n", s.sentinel);
         let stdout = format!("{attacker}{trailer}");
@@ -172,7 +194,7 @@ mod tests {
 
     #[test]
     fn strip_returns_none_when_session_sentinel_absent() {
-        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local);
+        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local, None);
         let stdout = "some output\n__TERAX_CWD_aaaa_bbbb__/spoof\nmore\n";
         let (_, cwd) = strip_cwd_sentinel(stdout, "/fallback", &s.sentinel);
         assert!(cwd.is_none(), "foreign sentinel must not match");
@@ -180,7 +202,7 @@ mod tests {
 
     #[test]
     fn wrap_embeds_session_sentinel() {
-        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local);
+        let s = ShellSession::new("/tmp".into(), WorkspaceEnv::Local, None);
         let wrapped = wrap_with_sentinel("echo hi", &WorkspaceEnv::Local, &s.sentinel);
         assert!(wrapped.contains(&s.sentinel));
     }

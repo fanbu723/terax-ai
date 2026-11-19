@@ -73,7 +73,9 @@ pub fn canonical_dir(
     path: &str,
     workspace: &WorkspaceEnv,
 ) -> Result<ResolvedGitDirectory> {
-    let candidate = resolve_path(path, workspace);
+    let candidate = resolve_path(path, workspace).map_err(|_| {
+        GitError::Unsupported("source control is not available for SSH remote workspaces yet")
+    })?;
     if !candidate.is_dir() {
         return Err(GitError::NotADirectory(path.to_string()));
     }

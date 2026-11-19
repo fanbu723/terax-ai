@@ -13,12 +13,30 @@ use serde::Serialize;
 use tauri::Manager;
 
 use crate::modules::proc::capture::{self, Limits};
+use crate::modules::ssh::hosts::SshHost;
+use crate::modules::ssh::SshState;
 #[cfg(windows)]
 use crate::modules::workspace::validate_wsl_distro_name;
-use crate::modules::workspace::{authorize_spawn_cwd, WorkspaceEnv, WorkspaceRegistry};
+use crate::modules::workspace::{
+    authorize_spawn_cwd, remote_unsupported, WorkspaceEnv, WorkspaceRegistry,
+};
 
 use background::{BackgroundLogResponse, BackgroundProc, BackgroundProcInfo};
 use session::{SessionRunOutput, ShellSession};
+
+/// The host snapshot a remote command needs, or `None` for a local workspace.
+fn ssh_host_for(
+    app: &tauri::AppHandle,
+    workspace: &WorkspaceEnv,
+) -> Result<Option<SshHost>, String> {
+    if !workspace.is_remote() {
+        return Ok(None);
+    }
+    let host_id = workspace
+        .ssh_host_id()
+        .ok_or_else(|| "SSH workspace is missing its host id".to_string())?;
+    app.state::<SshState>().host(host_id).map(Some)
+}
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const MAX_TIMEOUT_SECS: u64 = 300;
@@ -55,6 +73,7 @@ pub async fn shell_run_command(
     // Authorization canonicalizes the cwd and the run blocks until exit, so
     // both belong on the blocking pool, never on an async worker.
     tauri::async_runtime::spawn_blocking(move || {
+        let ssh_host = ssh_host_for(&app, &workspace)?;
         authorize_spawn_cwd(
             &app.state::<WorkspaceRegistry>(),
             cwd.as_deref(),
@@ -65,7 +84,7 @@ pub async fn shell_run_command(
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string);
-        run_blocking(trimmed, cwd_path, workspace, dur)
+        run_blocking(trimmed, cwd_path, workspace, dur, ssh_host)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -84,8 +103,9 @@ pub(crate) fn run_blocking_inner(
     cwd: Option<String>,
     workspace: WorkspaceEnv,
     dur: Duration,
+    ssh_host: Option<SshHost>,
 ) -> Result<CommandOutput, String> {
-    run_blocking(command, cwd, workspace, dur)
+    run_blocking(command, cwd, workspace, dur, ssh_host)
 }
 
 fn run_blocking(
@@ -93,8 +113,9 @@ fn run_blocking(
     cwd: Option<String>,
     workspace: WorkspaceEnv,
     dur: Duration,
+    ssh_host: Option<SshHost>,
 ) -> Result<CommandOutput, String> {
-    let mut cmd = build_oneshot_command(&command, &workspace, cwd.as_deref())?;
+    let mut cmd = build_oneshot_command(&command, &workspace, cwd.as_deref(), ssh_host.as_ref())?;
     if let (WorkspaceEnv::Local, Some(dir)) = (&workspace, cwd) {
         cmd.current_dir(dir);
     }
@@ -157,7 +178,8 @@ pub async fn shell_session_open(
     let workspace = WorkspaceEnv::from_option(workspace);
     // wsl_home spawns wsl.exe on Windows and authorization hits the disk.
     let registry_app = app.clone();
-    let (initial, workspace) = tauri::async_runtime::spawn_blocking(move || {
+    let (initial, workspace, ssh_host) = tauri::async_runtime::spawn_blocking(move || {
+        let ssh_host = ssh_host_for(&registry_app, &workspace)?;
         authorize_spawn_cwd(
             &registry_app.state::<WorkspaceRegistry>(),
             cwd.as_deref(),
@@ -168,6 +190,8 @@ pub async fn shell_session_open(
             None => {
                 if let WorkspaceEnv::Wsl { distro } = &workspace {
                     crate::modules::workspace::wsl_home(distro.clone())?
+                } else if let Some(host) = &ssh_host {
+                    crate::modules::ssh::fs::home(host)?
                 } else {
                     crate::modules::fs::to_canon(
                         dirs::home_dir().unwrap_or_else(|| PathBuf::from("/")),
@@ -175,16 +199,21 @@ pub async fn shell_session_open(
                 }
             }
         };
-        Ok::<_, String>((initial, workspace))
+        Ok::<_, String>((initial, workspace, ssh_host))
     })
     .await
     .map_err(|e| e.to_string())??;
-    Ok(register_session(&app, initial, workspace))
+    Ok(register_session(&app, initial, workspace, ssh_host))
 }
 
-fn register_session(app: &tauri::AppHandle, initial: String, workspace: WorkspaceEnv) -> u32 {
+fn register_session(
+    app: &tauri::AppHandle,
+    initial: String,
+    workspace: WorkspaceEnv,
+    ssh_host: Option<SshHost>,
+) -> u32 {
     let state = app.state::<ShellState>();
-    let session = Arc::new(ShellSession::new(initial, workspace));
+    let session = Arc::new(ShellSession::new(initial, workspace, ssh_host));
     let id = state.next_session_id.fetch_add(1, Ordering::Relaxed);
     state.sessions.write().unwrap().insert(id, session);
     id
@@ -238,6 +267,9 @@ pub async fn shell_bg_spawn(
 ) -> Result<u32, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
     tauri::async_runtime::spawn_blocking(move || {
+        if workspace.is_remote() {
+            return Err(remote_unsupported("background shells"));
+        }
         authorize_spawn_cwd(
             &app.state::<WorkspaceRegistry>(),
             cwd.as_deref(),
@@ -292,7 +324,13 @@ pub(crate) fn build_oneshot_command(
     command: &str,
     #[cfg_attr(not(windows), allow(unused_variables))] workspace: &WorkspaceEnv,
     #[cfg_attr(not(windows), allow(unused_variables))] cwd: Option<&str>,
+    ssh_host: Option<&SshHost>,
 ) -> Result<Command, String> {
+    if workspace.is_remote() {
+        let host =
+            ssh_host.ok_or_else(|| "SSH host is not available for this command".to_string())?;
+        return crate::modules::ssh::exec::oneshot_command(host, command, cwd);
+    }
     #[cfg(windows)]
     if let WorkspaceEnv::Wsl { distro } = workspace {
         validate_wsl_distro_name(distro)?;
@@ -348,6 +386,7 @@ mod tests {
             None,
             WorkspaceEnv::Local,
             Duration::from_secs(timeout_secs),
+            None,
         )
         .expect("run")
     }
@@ -385,7 +424,7 @@ mod tests {
 
     #[test]
     fn build_oneshot_command_uses_sh_minus_c_on_unix() {
-        let cmd = build_oneshot_command("echo hi", &WorkspaceEnv::Local, None).unwrap();
+        let cmd = build_oneshot_command("echo hi", &WorkspaceEnv::Local, None, None).unwrap();
         assert_eq!(cmd.get_program(), "/bin/sh");
         let args: Vec<_> = cmd.get_args().collect();
         assert_eq!(args, vec!["-c", "echo hi"]);

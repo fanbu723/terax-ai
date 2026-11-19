@@ -31,8 +31,13 @@ impl LspState {
     }
 
     pub fn kill_all(&self) {
-        let drained: Vec<Arc<LspSession>> =
-            self.sessions.write().unwrap().drain().map(|(_, s)| s).collect();
+        let drained: Vec<Arc<LspSession>> = self
+            .sessions
+            .write()
+            .unwrap()
+            .drain()
+            .map(|(_, s)| s)
+            .collect();
         for session in drained {
             session.kill();
         }
@@ -72,6 +77,9 @@ pub async fn lsp_spawn(
     let workspace = WorkspaceEnv::from_option(workspace);
     if workspace.is_wsl() {
         return Err("lsp: WSL workspaces are not supported yet".into());
+    }
+    if workspace.is_remote() {
+        return Err("language servers are not available for SSH remote workspaces yet".into());
     }
     let root = authorize_spawn_cwd(&registry, Some(root.as_str()), &workspace)?
         .ok_or("lsp: workspace root is required")?;

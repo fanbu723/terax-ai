@@ -45,7 +45,7 @@ impl AssetGrants {
         generation: u64,
     ) -> Result<String, String> {
         let root =
-            std::fs::canonicalize(resolve_path(path, &workspace)).map_err(|e| e.to_string())?;
+            std::fs::canonicalize(resolve_path(path, &workspace)?).map_err(|e| e.to_string())?;
         let directory = root.is_dir();
         if directory {
             super::read_policy::readable(&root)?;
@@ -173,7 +173,7 @@ fn respond(
     .decode_utf8()
     .map_err(|e| e.to_string())?;
     let path =
-        std::fs::canonicalize(resolve_path(&path, &grant.workspace)).map_err(|e| e.to_string())?;
+        std::fs::canonicalize(resolve_path(&path, &grant.workspace)?).map_err(|e| e.to_string())?;
     if grant.directory {
         super::read_policy::readable(&path)?;
     }

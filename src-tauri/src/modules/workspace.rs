@@ -191,7 +191,13 @@ pub fn authorize_spawn_cwd(
     let Some(cwd) = cwd.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
-    let resolved = resolve_path(cwd, workspace);
+    // A remote cwd is a spelling for the remote shell; there is nothing on the
+    // host to canonicalize, and the SSH transport validates it before use.
+    if workspace.is_remote() {
+        validate_remote_path(cwd)?;
+        return Ok(Some(PathBuf::from(cwd)));
+    }
+    let resolved = resolve_path(cwd, workspace)?;
     let canonical =
         std::fs::canonicalize(&resolved).map_err(|e| format!("cwd not accessible: {e}"))?;
     if !canonical.is_dir() {
@@ -216,7 +222,11 @@ pub fn authorize_user_spawn_cwd(
     let Some(cwd) = cwd.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
-    let resolved = resolve_path(cwd, workspace);
+    if workspace.is_remote() {
+        validate_remote_path(cwd)?;
+        return Ok(Some(PathBuf::from(cwd)));
+    }
+    let resolved = resolve_path(cwd, workspace)?;
     let canonical =
         std::fs::canonicalize(&resolved).map_err(|e| format!("cwd not accessible: {e}"))?;
     if !canonical.is_dir() {
@@ -259,7 +269,7 @@ pub async fn workspace_authorize(
     // Canonicalizing touches the disk (possibly a network volume).
     crate::modules::fs::blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let resolved = resolve_path(&path, &workspace);
+        let resolved = resolve_path(&path, &workspace)?;
         let canonical = tauri::Manager::state::<WorkspaceRegistry>(&app)
             .authorize(&resolved)
             .map_err(|e| e.to_string())?;
@@ -436,6 +446,13 @@ pub enum WorkspaceEnv {
     Wsl {
         distro: String,
     },
+    /// A remote POSIX execution world reached over the system OpenSSH client.
+    /// Paths in this environment are remote spellings: they must never be fed
+    /// to a host filesystem API.
+    Ssh {
+        #[serde(rename = "hostId")]
+        host_id: String,
+    },
 }
 
 impl WorkspaceEnv {
@@ -446,6 +463,41 @@ impl WorkspaceEnv {
     pub fn is_wsl(&self) -> bool {
         matches!(self, Self::Wsl { .. })
     }
+
+    /// True for any execution world whose files and processes are not the
+    /// host's. Commands that cannot serve a remote world must fail closed.
+    pub fn is_remote(&self) -> bool {
+        matches!(self, Self::Ssh { .. })
+    }
+
+    /// The SSH host id when this environment is remote.
+    pub fn ssh_host_id(&self) -> Option<&str> {
+        match self {
+            Self::Ssh { host_id } => Some(host_id.as_str()),
+            _ => None,
+        }
+    }
+}
+
+/// The error a host-only operation returns for a remote workspace. Commands
+/// that have no remote implementation surface this instead of touching disk.
+pub fn remote_unsupported(operation: &str) -> String {
+    format!("{operation} is not available for SSH remote workspaces yet")
+}
+
+/// A remote path must be an absolute POSIX spelling free of control bytes.
+/// Canonicalization happens where the file lives (on the SSH host).
+pub fn validate_remote_path(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("remote path is empty".into());
+    }
+    if !path.starts_with('/') {
+        return Err(format!("remote path must be absolute: {path}"));
+    }
+    if path.chars().any(|c| c == '\0' || c == '\n' || c == '\r') {
+        return Err("remote path contains control characters".into());
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -456,16 +508,20 @@ pub struct WslDistro {
 }
 
 #[cfg(windows)]
-pub fn resolve_path(path: &str, workspace: &WorkspaceEnv) -> PathBuf {
+pub fn resolve_path(path: &str, workspace: &WorkspaceEnv) -> Result<PathBuf, String> {
     match workspace {
-        WorkspaceEnv::Local => PathBuf::from(path),
-        WorkspaceEnv::Wsl { distro } => wsl_path_to_host(distro, path),
+        WorkspaceEnv::Local => Ok(PathBuf::from(path)),
+        WorkspaceEnv::Wsl { distro } => Ok(wsl_path_to_host(distro, path)),
+        WorkspaceEnv::Ssh { .. } => Err(remote_unsupported("host filesystem access")),
     }
 }
 
 #[cfg(not(windows))]
-pub fn resolve_path(path: &str, _workspace: &WorkspaceEnv) -> PathBuf {
-    PathBuf::from(path)
+pub fn resolve_path(path: &str, workspace: &WorkspaceEnv) -> Result<PathBuf, String> {
+    match workspace {
+        WorkspaceEnv::Ssh { .. } => Err(remote_unsupported("host filesystem access")),
+        WorkspaceEnv::Local | WorkspaceEnv::Wsl { .. } => Ok(PathBuf::from(path)),
+    }
 }
 
 /// True for WSL distro names safe to splice into a UNC path. Real WSL distros
@@ -827,7 +883,7 @@ mod tests {
     fn resolve_path_keeps_local_paths_unchanged() {
         let path = r"C:\Users\vinicios\repo";
         assert_eq!(
-            resolve_path(path, &WorkspaceEnv::Local),
+            resolve_path(path, &WorkspaceEnv::Local)?,
             PathBuf::from(path)
         );
     }
@@ -838,7 +894,7 @@ mod tests {
             distro: "Ubuntu".into(),
         };
         assert_eq!(
-            resolve_path("/home/vinicios/repo", &workspace),
+            resolve_path("/home/vinicios/repo", &workspace)?,
             wsl_path_to_host("Ubuntu", "/home/vinicios/repo")
         );
     }
@@ -1294,13 +1350,22 @@ mod appimage_tests {
         let env = reader(&[
             ("LD_LIBRARY_PATH", "/tmp/.mount_Terax_X/usr/lib:/usr/lib"),
             ("PATH", "/tmp/.mount_Terax_X/usr/bin:/usr/bin:/bin"),
-            ("GST_PLUGIN_SYSTEM_PATH", "/tmp/.mount_Terax_X/usr/lib/gstreamer-1.0"),
+            (
+                "GST_PLUGIN_SYSTEM_PATH",
+                "/tmp/.mount_Terax_X/usr/lib/gstreamer-1.0",
+            ),
             ("APPDIR", "/tmp/.mount_Terax_X"),
         ]);
         let out = compute_appimage_env_overrides(appdir, env);
 
-        assert_eq!(find(&out, "LD_LIBRARY_PATH"), Some(&Some(OsString::from("/usr/lib"))));
-        assert_eq!(find(&out, "PATH"), Some(&Some(OsString::from("/usr/bin:/bin"))));
+        assert_eq!(
+            find(&out, "LD_LIBRARY_PATH"),
+            Some(&Some(OsString::from("/usr/lib")))
+        );
+        assert_eq!(
+            find(&out, "PATH"),
+            Some(&Some(OsString::from("/usr/bin:/bin")))
+        );
         // Only an APPDIR entry, so the var is removed entirely.
         assert_eq!(find(&out, "GST_PLUGIN_SYSTEM_PATH"), Some(&None));
         assert_eq!(find(&out, "APPDIR"), Some(&None));
@@ -1324,9 +1389,16 @@ mod appimage_tests {
     fn unsets_value_vars_only_when_pointing_into_appdir() {
         let appdir = Path::new("/tmp/.mount_Terax_X");
         let into = reader(&[("LD_PRELOAD", "/tmp/.mount_Terax_X/usr/lib/x.so")]);
-        assert_eq!(find(&compute_appimage_env_overrides(appdir, into), "LD_PRELOAD"), Some(&None));
+        assert_eq!(
+            find(&compute_appimage_env_overrides(appdir, into), "LD_PRELOAD"),
+            Some(&None)
+        );
 
         let outside = reader(&[("FONTCONFIG_FILE", "/etc/fonts/fonts.conf")]);
-        assert!(find(&compute_appimage_env_overrides(appdir, outside), "FONTCONFIG_FILE").is_none());
+        assert!(find(
+            &compute_appimage_env_overrides(appdir, outside),
+            "FONTCONFIG_FILE"
+        )
+        .is_none());
     }
 }

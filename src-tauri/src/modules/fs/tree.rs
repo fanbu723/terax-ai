@@ -7,9 +7,10 @@ use ignore::WalkBuilder;
 use serde::Serialize;
 
 use super::blocking;
+use crate::modules::ssh::{route as ssh_route, snapshot_if_remote, SshState};
 use crate::modules::workspace::{resolve_path, WorkspaceEnv};
 
-#[derive(Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EntryKind {
     File,
@@ -17,7 +18,7 @@ pub enum EntryKind {
     Symlink,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct DirEntry {
     pub name: String,
     pub kind: EntryKind,
@@ -25,6 +26,21 @@ pub struct DirEntry {
     /// Milliseconds since UNIX epoch; 0 if unavailable.
     pub mtime: u64,
     pub gitignored: bool,
+}
+
+/// Dirs first, then symlinks, then files, each in numeric-aware natural order.
+/// Shared with the SSH backend so a remote listing sorts like a local one.
+pub(crate) fn sort_entries(entries: &mut [DirEntry]) {
+    entries.sort_by(|a, b| {
+        let rank = |k: &EntryKind| match k {
+            EntryKind::Dir => 0,
+            EntryKind::Symlink => 1,
+            EntryKind::File => 2,
+        };
+        rank(&a.kind)
+            .cmp(&rank(&b.kind))
+            .then_with(|| natural_cmp(&a.name, &b.name))
+    });
 }
 
 // Whether `dir` is inside a git repo. Walks up only; never descends into
@@ -133,11 +149,16 @@ fn natural_cmp(a: &str, b: &str) -> Ordering {
 /// callers pay nothing.
 #[tauri::command]
 pub async fn fs_read_dir(
+    ssh: tauri::State<'_, SshState>,
     path: String,
     show_hidden: bool,
     git_decorations: Option<bool>,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<Vec<DirEntry>, String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::read_dir(&remote, &path, show_hidden)).await;
+    }
     blocking(move || read_dir_entries(path, show_hidden, git_decorations, workspace)).await
 }
 
@@ -148,7 +169,7 @@ pub fn read_dir_entries(
     workspace: Option<WorkspaceEnv>,
 ) -> Result<Vec<DirEntry>, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root = resolve_path(&path, &workspace);
+    let root = resolve_path(&path, &workspace)?;
     let read = std::fs::read_dir(&root).map_err(|e| {
         log::debug!("fs_read_dir({}) failed: {e}", root.display());
         e.to_string()
@@ -209,16 +230,7 @@ pub fn read_dir_entries(
         })
         .collect();
 
-    entries.sort_by(|a, b| {
-        let rank = |k: &EntryKind| match k {
-            EntryKind::Dir => 0,
-            EntryKind::Symlink => 1,
-            EntryKind::File => 2,
-        };
-        rank(&a.kind)
-            .cmp(&rank(&b.kind))
-            .then_with(|| natural_cmp(&a.name, &b.name))
-    });
+    sort_entries(&mut entries);
 
     Ok(entries)
 }
@@ -229,10 +241,15 @@ pub fn read_dir_entries(
 /// Hidden entries are filtered by dot-prefix only.
 #[tauri::command]
 pub async fn list_subdirs(
+    ssh: tauri::State<'_, SshState>,
     path: String,
     show_hidden: bool,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<Vec<String>, String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::subdirs(&remote, &path, show_hidden)).await;
+    }
     blocking(move || subdirs(path, show_hidden, workspace)).await
 }
 
@@ -242,7 +259,7 @@ pub fn subdirs(
     workspace: Option<WorkspaceEnv>,
 ) -> Result<Vec<String>, String> {
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root = resolve_path(&path, &workspace);
+    let root = resolve_path(&path, &workspace)?;
     let read = std::fs::read_dir(&root).map_err(|e| {
         log::debug!("list_subdirs({}) read_dir failed: {e}", root.display());
         e.to_string()

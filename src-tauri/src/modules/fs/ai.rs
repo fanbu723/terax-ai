@@ -11,6 +11,7 @@ use super::file::ReadResult;
 use super::grep::{GlobHit, GlobResponse, GrepHit, GrepResponse};
 use super::read_policy::readable;
 use super::tree::DirEntry;
+use crate::modules::ssh::{route as ssh_route, snapshot_if_remote, SshState};
 use crate::modules::workspace::{resolve_path, WorkspaceEnv, WorkspaceRegistry};
 
 fn path_error(error: std::io::Error) -> String {
@@ -154,10 +155,14 @@ pub async fn ai_read_file(
     path: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<ReadResult, String> {
+    let remote = snapshot_if_remote(&app.state::<SshState>(), workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return super::blocking(move || ssh_route::read_file(&remote, &path, false)).await;
+    }
     super::blocking(move || {
         read_file(
             &app.state::<WorkspaceRegistry>(),
-            &resolve_path(&path, &WorkspaceEnv::from_option(workspace)),
+            &resolve_path(&path, &WorkspaceEnv::from_option(workspace))?,
             10 * 1024 * 1024,
         )
     })
@@ -170,11 +175,15 @@ pub async fn ai_read_dir(
     path: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<Vec<DirEntry>, String> {
+    let remote = snapshot_if_remote(&app.state::<SshState>(), workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return super::blocking(move || ssh_route::read_dir(&remote, &path, false)).await;
+    }
     super::blocking(move || {
         let registry = app.state::<WorkspaceRegistry>();
         let path = authorized(
             &registry,
-            &resolve_path(&path, &WorkspaceEnv::from_option(workspace)),
+            &resolve_path(&path, &WorkspaceEnv::from_option(workspace))?,
         )?;
         let entries = super::tree::read_dir_entries(
             super::to_canon(&path),
@@ -213,7 +222,7 @@ pub async fn ai_glob(
     super::blocking(move || {
         let registry = app.state::<WorkspaceRegistry>();
         let workspace = WorkspaceEnv::from_option(workspace);
-        let root_path = authorized(&registry, &resolve_path(&root, &workspace))?;
+        let root_path = authorized(&registry, &resolve_path(&root, &workspace)?)?;
         let matcher = Glob::new(&pattern)
             .map_err(|e| e.to_string())?
             .compile_matcher();
@@ -278,7 +287,7 @@ pub async fn ai_grep(
     super::blocking(move || {
         let registry = app.state::<WorkspaceRegistry>();
         let workspace = WorkspaceEnv::from_option(workspace);
-        let root_path = authorized(&registry, &resolve_path(&root, &workspace))?;
+        let root_path = authorized(&registry, &resolve_path(&root, &workspace)?)?;
         let matcher = RegexBuilder::new(&pattern)
             .case_insensitive(case_insensitive.unwrap_or(false))
             .build()

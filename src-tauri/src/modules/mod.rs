@@ -18,6 +18,7 @@ pub mod pty;
 pub mod runtime;
 pub mod secrets;
 pub mod shell;
+pub mod ssh;
 pub mod vibrancy;
 pub mod window_presentation;
 pub mod workspace;

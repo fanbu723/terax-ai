@@ -254,7 +254,7 @@ fn prepare_dirs(
     paths
         .into_iter()
         .filter_map(|raw| {
-            let resolved = resolve_path(&raw, workspace);
+            let resolved = resolve_path(&raw, workspace).ok()?;
             let canonical = std::fs::canonicalize(&resolved).ok()?;
             if !canonical.is_dir()
                 || plan::is_skipped(&canonical)
@@ -271,7 +271,7 @@ fn prepare_dirs(
 /// path we report matches what editor tabs store even when the file itself no
 /// longer exists.
 fn canonical_file(workspace: &WorkspaceEnv, raw: &str) -> Option<(String, String, PathBuf)> {
-    let resolved = resolve_path(raw, workspace);
+    let resolved = resolve_path(raw, workspace).ok()?;
     let name = resolved.file_name()?.to_owned();
     let parent = std::fs::canonicalize(resolved.parent()?).ok()?;
     let file = parent.join(name);
@@ -450,10 +450,12 @@ pub async fn fs_watch_remove(
         let dirs: Vec<String> = paths
             .into_iter()
             .map(|raw| {
-                let resolved = resolve_path(&raw, &workspace);
-                to_canon(std::fs::canonicalize(&resolved).unwrap_or(resolved))
+                let resolved = resolve_path(&raw, &workspace)?;
+                Ok::<String, String>(to_canon(
+                    std::fs::canonicalize(&resolved).unwrap_or(resolved),
+                ))
             })
-            .collect();
+            .collect::<Result<Vec<_>, String>>()?;
         let files: Vec<(String, String)> = files
             .unwrap_or_default()
             .iter()

@@ -126,7 +126,9 @@ fn list_entries(repo: &ResolvedGitDirectory) -> Result<Vec<WorktreeEntry>> {
 /// (Linux paths inside WSL), so they are mapped to the host before being
 /// looked up.
 fn entry_exists(workspace: &WorkspaceEnv, path: &str) -> bool {
-    resolve_path(path, workspace).is_dir()
+    resolve_path(path, workspace)
+        .map(|resolved| resolved.is_dir())
+        .unwrap_or(false)
 }
 
 const WSL_WORKTREES_UNSUPPORTED: &str =

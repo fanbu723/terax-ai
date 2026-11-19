@@ -1,5 +1,6 @@
 use super::blocking;
 use super::index::FileIndexState;
+use crate::modules::ssh::{route as ssh_route, snapshot_if_remote, SshState};
 use crate::modules::workspace::{resolve_path, WorkspaceEnv, WorkspaceRegistry};
 use serde::Serialize;
 use std::io;
@@ -55,7 +56,7 @@ fn resolve_authorized_root(
     workspace: &WorkspaceEnv,
     registry: &WorkspaceRegistry,
 ) -> Result<std::path::PathBuf, String> {
-    let resolved = resolve_path(root, workspace);
+    let resolved = resolve_path(root, workspace)?;
     let canonical = registry
         .canonicalize_cached(resolved)
         .map_err(|error| format!("workspace root is not accessible: {error}"))?;
@@ -235,13 +236,18 @@ fn remove_path(path: &Path) -> io::Result<()> {
 #[tauri::command]
 pub async fn fs_create_file(
     index: State<'_, FileIndexState>,
+    ssh: State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<(), String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::create_file(&remote, &path)).await;
+    }
     let index = index.inner().clone();
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let p = resolve_path(&path, &workspace);
+        let p = resolve_path(&path, &workspace)?;
         create_file(&p)?;
         note_changed(&index, &p);
         Ok(())
@@ -265,13 +271,18 @@ fn create_file(p: &Path) -> Result<(), String> {
 #[tauri::command]
 pub async fn fs_create_dir(
     index: State<'_, FileIndexState>,
+    ssh: State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<(), String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::create_dir(&remote, &path)).await;
+    }
     let index = index.inner().clone();
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let p = resolve_path(&path, &workspace);
+        let p = resolve_path(&path, &workspace)?;
         create_dir(&p)?;
         note_changed(&index, &p);
         Ok(())
@@ -293,15 +304,20 @@ fn create_dir(p: &Path) -> Result<(), String> {
 #[tauri::command]
 pub async fn fs_rename(
     index: State<'_, FileIndexState>,
+    ssh: State<'_, SshState>,
     from: String,
     to: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<(), String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::rename(&remote, &from, &to)).await;
+    }
     let index = index.inner().clone();
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let from_p = resolve_path(&from, &workspace);
-        let to_p = resolve_path(&to, &workspace);
+        let from_p = resolve_path(&from, &workspace)?;
+        let to_p = resolve_path(&to, &workspace)?;
         rename(&from_p, &to_p)?;
         note_changed(&index, &from_p);
         note_changed(&index, &to_p);
@@ -331,20 +347,33 @@ fn rename(from_p: &Path, to_p: &Path) -> Result<(), String> {
 #[tauri::command]
 pub async fn fs_move(
     app: AppHandle,
+    ssh: State<'_, SshState>,
     from: String,
     to: String,
     root: String,
     expected_conflict: Option<String>,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<FsMoveResult, String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || {
+            let root = ssh_route::require_root(&remote, &root)?;
+            let from_path = remote.normalize(&from)?;
+            let to_path = remote.normalize(&to)?;
+            ssh_route::require_within(&root, &from_path)?;
+            ssh_route::require_within(&root, &to_path)?;
+            ssh_route::move_path(&remote, &from_path, &to_path, expected_conflict.as_deref())
+        })
+        .await;
+    }
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
         let root = resolve_authorized_root(&root, &workspace, &app.state::<WorkspaceRegistry>())?;
         let moved = fs_move_impl(&from, &to, &root, expected_conflict.as_deref(), &workspace)?;
         if moved == FsMoveResult::Moved {
             let index = app.state::<FileIndexState>();
-            note_changed(&index, &resolve_path(&from, &workspace));
-            note_changed(&index, &resolve_path(&to, &workspace));
+            note_changed(&index, &resolve_path(&from, &workspace)?);
+            note_changed(&index, &resolve_path(&to, &workspace)?);
         }
         Ok(moved)
     })
@@ -358,8 +387,8 @@ fn fs_move_impl(
     expected_conflict: Option<&str>,
     workspace: &WorkspaceEnv,
 ) -> Result<FsMoveResult, String> {
-    let from_p = resolve_path(from, workspace);
-    let to_p = resolve_path(to, workspace);
+    let from_p = resolve_path(from, workspace)?;
+    let to_p = resolve_path(to, workspace)?;
     authorize_mutation_entry(&from_p, root)?;
     authorize_mutation_entry(&to_p, root)?;
     if from_p == to_p {
@@ -412,13 +441,18 @@ fn fs_move_impl(
 #[tauri::command]
 pub async fn fs_delete(
     index: State<'_, FileIndexState>,
+    ssh: State<'_, SshState>,
     path: String,
     workspace: Option<WorkspaceEnv>,
 ) -> Result<(), String> {
+    let remote = snapshot_if_remote(&ssh, workspace.as_ref())?;
+    if let Some(remote) = remote {
+        return blocking(move || ssh_route::delete(&remote, &path)).await;
+    }
     let index = index.inner().clone();
     blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
-        let p = resolve_path(&path, &workspace);
+        let p = resolve_path(&path, &workspace)?;
         delete_path(&p)?;
         note_changed(&index, &p);
         Ok(())
@@ -441,6 +475,42 @@ pub async fn fs_delete_batch(
     workspace: Option<WorkspaceEnv>,
 ) -> FsDeleteBatchResult {
     let count = paths.len();
+    // The return type is not a Result, so the state is read here and only the
+    // detached snapshot crosses into the blocking pool.
+    let remote = snapshot_if_remote(&app.state::<SshState>(), workspace.as_ref())
+        .ok()
+        .flatten();
+    if let Some(remote) = remote {
+        return tauri::async_runtime::spawn_blocking(move || {
+            let mut deleted = Vec::new();
+            let mut failed = 0;
+            let Ok(root) = ssh_route::require_root(&remote, &root) else {
+                return FsDeleteBatchResult {
+                    deleted,
+                    failed: paths.len(),
+                };
+            };
+            for path in paths {
+                let outcome = remote.normalize(&path).and_then(|normalized| {
+                    ssh_route::require_within(&root, &normalized)?;
+                    ssh_route::delete(&remote, &normalized)
+                });
+                match outcome {
+                    Ok(()) => deleted.push(path),
+                    Err(error) => {
+                        failed += 1;
+                        log::warn!("fs_delete_batch({path}) failed: {error}");
+                    }
+                }
+            }
+            FsDeleteBatchResult { deleted, failed }
+        })
+        .await
+        .unwrap_or(FsDeleteBatchResult {
+            deleted: Vec::new(),
+            failed: count,
+        });
+    }
     tauri::async_runtime::spawn_blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
         let Ok(root) =
@@ -454,7 +524,9 @@ pub async fn fs_delete_batch(
         let result = fs_delete_batch_impl(paths, &root, &workspace);
         let index = app.state::<FileIndexState>();
         for deleted in &result.deleted {
-            note_changed(&index, &resolve_path(deleted, &workspace));
+            if let Ok(resolved) = resolve_path(deleted, &workspace) {
+                note_changed(&index, &resolved);
+            }
         }
         result
     })
@@ -473,7 +545,10 @@ fn fs_delete_batch_impl(
     let mut deleted = Vec::with_capacity(paths.len());
     let mut failed = 0;
     for path in paths {
-        let resolved = resolve_path(&path, workspace);
+        let Ok(resolved) = resolve_path(&path, workspace) else {
+            failed += 1;
+            continue;
+        };
         let result = authorize_mutation_entry(&resolved, root)
             .and_then(|()| remove_path(&resolved).map_err(|error| error.to_string()));
         match result {

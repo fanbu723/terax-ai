@@ -163,7 +163,7 @@ pub fn run_search(
 /// Resolves and validates the root a search runs over; shared by every entry
 /// point that reads the index so none of them can reach a different root.
 fn search_root(root: &str, workspace: &WorkspaceEnv) -> Result<std::path::PathBuf, String> {
-    let root_path = resolve_path(root, workspace);
+    let root_path = resolve_path(root, workspace)?;
     if !root_path.is_dir() {
         return Err(format!("not a directory: {root}"));
     }
@@ -314,7 +314,7 @@ pub fn run_list_files(
     let cap = limit.unwrap_or(DEFAULT_LIMIT).clamp(1, HARD_LIMIT);
     let depth = max_depth.unwrap_or(DEFAULT_DEPTH).clamp(1, HARD_DEPTH);
     let workspace = WorkspaceEnv::from_option(workspace);
-    let root_path = resolve_path(&root, &workspace);
+    let root_path = resolve_path(&root, &workspace)?;
     if !root_path.is_dir() {
         return Err(format!("not a directory: {root}"));
     }

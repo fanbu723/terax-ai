@@ -119,12 +119,12 @@ pub fn spawn(
         return Err("empty command".into());
     }
     if let Some(ref dir) = cwd {
-        if !resolve_path(dir, &workspace).is_dir() {
+        if !resolve_path(dir, &workspace)?.is_dir() {
             return Err(format!("cwd is not a directory: {dir}"));
         }
     }
 
-    let mut cmd = super::build_oneshot_command(&trimmed, &workspace, cwd.as_deref())?;
+    let mut cmd = super::build_oneshot_command(&trimmed, &workspace, cwd.as_deref(), None)?;
     if let (WorkspaceEnv::Local, Some(ref dir)) = (&workspace, &cwd) {
         cmd.current_dir(dir);
     }

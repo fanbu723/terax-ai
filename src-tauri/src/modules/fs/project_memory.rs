@@ -17,11 +17,11 @@ pub async fn fs_read_project_memory(
     super::blocking(move || {
         let workspace = WorkspaceEnv::from_option(workspace);
         let root =
-            std::fs::canonicalize(resolve_path(&root, &workspace)).map_err(|e| e.to_string())?;
+            std::fs::canonicalize(resolve_path(&root, &workspace)?).map_err(|e| e.to_string())?;
         if !app.state::<WorkspaceRegistry>().is_authorized(&root) {
             return Err("project memory is outside the authorized workspace".into());
         }
-        read_memory(&root, &resolve_path(&checked_path, &workspace))
+        read_memory(&root, &resolve_path(&checked_path, &workspace)?)
     })
     .await
 }
