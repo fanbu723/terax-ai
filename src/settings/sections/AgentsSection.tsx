@@ -41,8 +41,11 @@ import {
 } from "@/modules/ai/store/snippetsStore";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import {
+  DEFAULT_DSH_ACP_COMMAND,
+  normalizeDshAcpCommand,
   setAgentPermissionMode,
   setCustomInstructions,
+  setDshAcpCommand,
 } from "@/modules/settings/store";
 import {
   Add01Icon,
@@ -68,6 +71,7 @@ export function AgentsSection() {
   const t = useT();
   const customInstructions = usePreferencesStore((s) => s.customInstructions);
   const permissionMode = usePreferencesStore((s) => s.agentPermissionMode);
+  const dshAcpCommand = usePreferencesStore((s) => s.dshAcpCommand);
   const customAgents = useAgentsStore((s) => s.customAgents);
   const activeAgentId = useAgentsStore((s) => s.activeId);
   const setActiveAgentId = useAgentsStore((s) => s.setActiveId);
@@ -98,6 +102,8 @@ export function AgentsSection() {
       />
 
       <PermissionsBlock value={normalizePermissionMode(permissionMode)} />
+
+      <DshConsoleBlock value={dshAcpCommand} />
 
       <CustomInstructionsBlock value={customInstructions} />
 
@@ -618,6 +624,77 @@ function PermissionsBlock({ value }: { value: PermissionMode }) {
           );
         })}
       </RadioGroup>
+    </section>
+  );
+}
+
+function DshConsoleBlock({ value }: { value: string }) {
+  const t = useT();
+  const [draft, setDraft] = useState(value);
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const normalized = normalizeDshAcpCommand(draft);
+    setInvalid(normalized !== draft.trim());
+    setDraft(normalized);
+    void setDshAcpCommand(normalized);
+  };
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <Label>{t("DSH console")}</Label>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-[11px]"
+          disabled={value === DEFAULT_DSH_ACP_COMMAND}
+          onClick={() => {
+            setDraft(DEFAULT_DSH_ACP_COMMAND);
+            setInvalid(false);
+            void setDshAcpCommand(DEFAULT_DSH_ACP_COMMAND);
+          }}
+        >
+          {t("Reset")}
+        </Button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        {t(
+          "Command Terax spawns for the DSH console. The default gateway supports plan, slash commands and elicitation; its first run downloads about 330 MB. Use dsh --profile acp for the official automation-only server.",
+        )}
+      </p>
+      <Input
+        id="dsh-acp-command"
+        value={draft}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        aria-invalid={invalid}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          setInvalid(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+        }}
+        className="h-8 font-mono text-[11px]"
+      />
+      <p
+        className={cn(
+          "min-h-4 text-[10px]",
+          invalid ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
+        {invalid
+          ? t("Use a single-line command.")
+          : t("Leave empty to use the default.")}
+      </p>
     </section>
   );
 }
