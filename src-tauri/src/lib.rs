@@ -3,7 +3,7 @@ pub mod modules;
 #[cfg(target_os = "macos")]
 use modules::app_menu;
 use modules::{
-    agent, control, fs, git, history, lsp, net, pty, secrets, shell, vibrancy, workspace,
+    agent, control, dsh_acp, fs, git, history, lsp, net, pty, secrets, shell, vibrancy, workspace,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -269,6 +269,7 @@ pub fn run() {
         .manage(git::watch::GitWatchState::default())
         .manage(history::HistoryState::default())
         .manage(lsp::LspState::default())
+        .manage(dsh_acp::AcpState::default())
         .manage(fs::supersede::Supersede::default())
         .manage(fs::index::FileIndexState::default())
         .manage({
@@ -325,6 +326,10 @@ pub fn run() {
             lsp::lsp_spawn,
             lsp::lsp_send,
             lsp::lsp_kill,
+            dsh_acp::dsh_acp_spawn,
+            dsh_acp::dsh_acp_write,
+            dsh_acp::dsh_acp_kill,
+            dsh_acp::dsh_acp_close_all,
             fs::search::fs_search,
             fs::search::fs_warm_index,
             fs::search::fs_list_files,
@@ -450,6 +455,9 @@ pub fn run() {
                     modules::window_presentation::macos::uninstall();
                     if let Some(state) = app.try_state::<lsp::LspState>() {
                         state.kill_all();
+                    }
+                    if let Some(state) = app.try_state::<dsh_acp::AcpState>() {
+                        state.close_all();
                     }
                     if let Some(state) = app.try_state::<control::ControlState>() {
                         state.shutdown();
