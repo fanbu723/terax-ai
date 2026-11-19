@@ -58,7 +58,8 @@ macOS 的 `.app` / `.dmg` 需要 macOS SDK 与平台链接器，Linux 容器物�
 ## 3. 首次准备
 
 ```bash
-git switch -c feat/your-change   # 分支前缀见 CONTRIBUTING.md
+git switch own                   # 集成分支，main 只用于同步上游
+git switch -c feat/your-change   # 临时分支，完成后合回 own
 docker compose build             # 首次构建镜像，约 4 GB，数分钟
 docker compose run --rm dev      # 进交互 shell，首次会自动 pnpm install
 ```
@@ -66,7 +67,36 @@ docker compose run --rm dev      # 进交互 shell，首次会自动 pnpm instal
 `docker compose run` 在镜像缺失时会自动构建，但**镜像已存在时不会重建**。
 改过 `Dockerfile` 之后必须显式执行 `docker compose build`。
 
-## 4. 日常循环
+## 4. 分支模型
+
+这个 fork 只用一个本地集成分支，`main` 永远保持与上游一致：
+
+| 分支 | 角色 | 允许的改动 |
+| --- | --- | --- |
+| `main` | 上游镜像 | 只做 `git merge upstream/main`，不提交任何 fork 专属内容 |
+| `own` | fork 的集成分支（GitHub 默认分支） | 所有本地工作：i18n、容器环境、CI workflow、文档 |
+| `feat/*` `fix/*` … | 临时功能分支 | 从 `own` 切出，完成后合并回 `own` |
+
+把 GitHub 的默认分支设为 `own` 还有一个副作用：`workflow_dispatch` 的手动触发入口只认默认分支，
+默认分支是 `own` 之后，[desktop-bundles workflow](../../.github/workflows/desktop-bundles.yml)
+的 **Run workflow** 按钮才可用（否则只能用 `app-v*` 标签触发）。
+
+### 同步上游
+
+```bash
+git switch main
+git fetch upstream
+git merge upstream/main        # 快进，不会产生合并提交
+git push origin main
+
+git switch own
+git merge main                 # 把上游改动并进来
+git push origin own
+```
+
+`main` 中没有 fork 专属文件，所以第一步永远是干净的快进；冲突只可能出现在第二步（`own` 上）。
+
+## 5. 日常循环
 
 ```
 新建分支 → 改代码 → 容器内检查 → 提交 → 推送 → 开 PR → CI → 合并
@@ -126,7 +156,7 @@ PR 一开，[ci.yml](../../.github/workflows/ci.yml) 自动运行：
 发布链接随后触发 [update-nix-sources.yml](../../.github/workflows/update-nix-sources.yml)
 更新 Nix 清单。
 
-## 5. 容器命令速查
+## 6. 容器命令速查
 
 | 命令 | 作用 |
 | --- | --- |
@@ -152,7 +182,7 @@ TAURI_SIGNING_PRIVATE_KEY=... TAURI_SIGNING_PRIVATE_KEY_PASSWORD=... \
 DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose run --rm dev bundle
 ```
 
-## 6. 常见问题
+## 7. 常见问题
 
 | 现象 | 原因与处理 |
 | --- | --- |
@@ -165,17 +195,18 @@ DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose run --rm dev bundle
 | 磁盘占用过大 | 镜像 4 G + `cargo_target` 约 9 G + `node_modules` 0.7 G + store 0.7 G，合计约 14.5 G |
 | 想清空所有缓存 | `docker compose down --volumes`，或 `docker volume rm terax-build_cargo_target` |
 
-## 7. Fork 注意事项
+## 8. Fork 注意事项
 
 在个人 fork 上：
 
-- 需在仓库 Actions 页面手动启用 workflow。
+- 需在仓库 Actions 页面手动启用 workflow（Settings → Actions → Allow all）。
+- 默认分支建议设为 `own`，否则 `workflow_dispatch` 的手动按钮不会出现。
 - `release.yml` 依赖 `TAURI_SIGNING_PRIVATE_KEY`、`APPLE_*`、`SIGNPATH_API_TOKEN`
   等 secrets，缺任何一个都跑不通，日常开发也用不到。
 - `signpath-test.yml` 与 `update-nix-sources.yml` 中硬编码了上游仓库
   `crynta/terax-ai`，在 fork 上不会按预期工作。
 
-## 8. 相关文档
+## 9. 相关文档
 
 - [TERAX.md](../../TERAX.md)：架构与代码约定的唯一事实来源
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)：质量门槛、分支与提交规范
