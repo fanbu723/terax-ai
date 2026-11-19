@@ -44,6 +44,8 @@ function baseContext(
     toggleHiddenFiles: noop,
     toggleAi: noop,
     askAiSelection: noop,
+    openDshWebGui: noop,
+    stopDshWebGui: noop,
     openSettings: noop,
     openKeyboardShortcuts: noop,
     openSpacesOverview: noop,

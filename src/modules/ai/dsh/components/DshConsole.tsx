@@ -23,12 +23,14 @@ import {
   CheckmarkCircle02Icon,
   CircleIcon,
   Clock01Icon,
+  Globe02Icon,
   Refresh01Icon,
   PlusSignIcon,
   ToolsIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { memo, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   activeDshSession,
   useDshStore,
@@ -48,6 +50,7 @@ import {
   type DshFormField,
   type DshFormValues,
 } from "../elicitation";
+import { useDshWebStore, useDshWebSync } from "../webStore";
 
 const STATUS_TONE: Record<ToolCallStatus, string> = {
   pending: "text-muted-foreground",
@@ -776,7 +779,60 @@ function ConnectionBar({ chatSessionId }: { chatSessionId: string }) {
           </Button>
         </>
       ) : null}
+      <DshWebButton />
     </div>
+  );
+}
+
+/**
+ * Starts (when needed) and opens the official DSH Web GUI. The managed server
+ * carries the features the automation-only ACP profile does not expose: plans,
+ * slash commands, elicitation forms and the settings/credentials panels.
+ */
+function DshWebButton() {
+  const t = useT();
+  const phase = useDshWebStore((s) => s.phase);
+  const port = useDshWebStore((s) => s.port);
+  const open = useDshWebStore((s) => s.open);
+  const [busy, setBusy] = useState(false);
+  useDshWebSync();
+
+  const running = phase === "running" && port !== null;
+  const activate = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const surface = await open();
+      if (surface === null) {
+        toast.error(
+          useDshWebStore.getState().error ?? t("Could not open the DSH Web GUI."),
+        );
+      } else if (surface === "browser") {
+        toast.info(t("Opened the DSH Web GUI in your browser."));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Button
+      size="xs"
+      variant="ghost"
+      className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground"
+      disabled={busy || phase === "starting"}
+      title={
+        running ? t("Open the DSH Web GUI") : t("Start the DSH Web GUI")
+      }
+      onClick={() => void activate()}
+    >
+      {busy || phase === "starting" ? (
+        <Spinner className="size-2.5" />
+      ) : (
+        <HugeiconsIcon icon={Globe02Icon} size={11} strokeWidth={1.75} />
+      )}
+      {t("Web GUI")}
+    </Button>
   );
 }
 

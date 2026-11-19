@@ -40,12 +40,16 @@ import {
   useSnippetsStore,
 } from "@/modules/ai/store/snippetsStore";
 import { usePreferencesStore } from "@/modules/settings/preferences";
+import { useDshWebStore, useDshWebSync } from "@/modules/ai/dsh/webStore";
 import {
   DEFAULT_DSH_ACP_COMMAND,
+  DEFAULT_DSH_WEB_COMMAND,
   normalizeDshAcpCommand,
+  normalizeDshWebCommand,
   setAgentPermissionMode,
   setCustomInstructions,
   setDshAcpCommand,
+  setDshWebCommand,
 } from "@/modules/settings/store";
 import {
   Add01Icon,
@@ -72,6 +76,7 @@ export function AgentsSection() {
   const customInstructions = usePreferencesStore((s) => s.customInstructions);
   const permissionMode = usePreferencesStore((s) => s.agentPermissionMode);
   const dshAcpCommand = usePreferencesStore((s) => s.dshAcpCommand);
+  const dshWebCommand = usePreferencesStore((s) => s.dshWebCommand);
   const customAgents = useAgentsStore((s) => s.customAgents);
   const activeAgentId = useAgentsStore((s) => s.activeId);
   const setActiveAgentId = useAgentsStore((s) => s.setActiveId);
@@ -104,6 +109,8 @@ export function AgentsSection() {
       <PermissionsBlock value={normalizePermissionMode(permissionMode)} />
 
       <DshConsoleBlock value={dshAcpCommand} />
+
+      <DshWebBlock value={dshWebCommand} />
 
       <CustomInstructionsBlock value={customInstructions} />
 
@@ -695,6 +702,124 @@ function DshConsoleBlock({ value }: { value: string }) {
           ? t("Use a single-line command.")
           : t("Leave empty to use the default.")}
       </p>
+    </section>
+  );
+}
+
+function DshWebBlock({ value }: { value: string }) {
+  const t = useT();
+  const [draft, setDraft] = useState(value);
+  const [invalid, setInvalid] = useState(false);
+  const phase = useDshWebStore((s) => s.phase);
+  const port = useDshWebStore((s) => s.port);
+  const error = useDshWebStore((s) => s.error);
+  const open = useDshWebStore((s) => s.open);
+  const stop = useDshWebStore((s) => s.stop);
+  useDshWebSync();
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const normalized = normalizeDshWebCommand(draft);
+    setInvalid(normalized !== draft.trim());
+    setDraft(normalized);
+    void setDshWebCommand(normalized);
+  };
+
+  const running = phase === "running" && port !== null;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <Label>{t("DSH Web GUI")}</Label>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-[11px]"
+          disabled={value === DEFAULT_DSH_WEB_COMMAND}
+          onClick={() => {
+            setDraft(DEFAULT_DSH_WEB_COMMAND);
+            setInvalid(false);
+            void setDshWebCommand(DEFAULT_DSH_WEB_COMMAND);
+          }}
+        >
+          {t("Reset")}
+        </Button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        {t(
+          "Command Terax runs to start the official DSH Web GUI. Plans, slash commands, elicitation forms and the settings panels live there; the window runs outside the Terax IPC sandbox.",
+        )}
+      </p>
+      <Input
+        id="dsh-web-command"
+        value={draft}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        aria-invalid={invalid}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          setInvalid(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+        }}
+        className="h-8 font-mono text-[11px]"
+      />
+      <p
+        className={cn(
+          "min-h-4 text-[10px]",
+          invalid ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
+        {invalid
+          ? t("Use a single-line command.")
+          : t("Leave empty to use the default.")}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-[11px]"
+          disabled={phase === "starting"}
+          onClick={() => void open()}
+        >
+          {running ? t("Open Web GUI") : t("Start Web GUI")}
+        </Button>
+        {running ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-[11px]"
+            onClick={() => void stop()}
+          >
+            {t("Stop")}
+          </Button>
+        ) : null}
+        <span
+          className={cn(
+            "min-w-0 truncate text-[10px]",
+            phase === "error"
+              ? "text-destructive"
+              : "text-muted-foreground",
+          )}
+          title={phase === "error" ? (error ?? undefined) : undefined}
+        >
+          {running
+            ? t("Running on port {port}", { port: port ?? 0 })
+            : phase === "starting"
+              ? t("Starting…")
+              : phase === "error"
+                ? (error ?? t("Not running"))
+                : t("Not running")}
+        </span>
+      </div>
     </section>
   );
 }

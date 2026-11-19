@@ -195,6 +195,8 @@ export type Preferences = {
   agentPermissionMode: PermissionMode;
   /** Command Terax spawns for the DSH ACP console. */
   dshAcpCommand: string;
+  /** Command Terax runs to start the managed DSH Web GUI. */
+  dshWebCommand: string;
   defaultWorkspaceEnv: string;
   shortcuts: Record<ShortcutId, KeyBinding[]>;
   editorAutoSave: boolean;
@@ -326,6 +328,24 @@ export function normalizeDshAcpCommand(value: unknown): string {
   // it to the official profile. Any other explicit command is left alone.
   return command === LEGACY_DSH_ACP_COMMAND ? DEFAULT_DSH_ACP_COMMAND : command;
 }
+
+const KEY_DSH_WEB_COMMAND = "dshWebCommand";
+/** `--port 0` lets DSH pick a free port; the URL is read from stdout. */
+export const DEFAULT_DSH_WEB_COMMAND = "dsh web --no-open --port 0";
+
+/** Empty, multiline or oversized commands fall back to the shipped default. */
+export function normalizeDshWebCommand(value: unknown): string {
+  if (typeof value !== "string") return DEFAULT_DSH_WEB_COMMAND;
+  const command = value.trim();
+  if (
+    !command ||
+    command.length > MAX_DSH_ACP_COMMAND_LENGTH ||
+    DSH_ACP_CONTROL_CHARACTERS.test(command)
+  ) {
+    return DEFAULT_DSH_WEB_COMMAND;
+  }
+  return command;
+}
 const KEY_DEFAULT_WORKSPACE_ENV = "defaultWorkspaceEnv";
 const KEY_SHORTCUTS = "shortcuts";
 const KEY_EDITOR_AUTO_SAVE = "editorAutoSave";
@@ -426,6 +446,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   agentPermissionMode: DEFAULT_PERMISSION_MODE,
   defaultWorkspaceEnv: "local",
   dshAcpCommand: DEFAULT_DSH_ACP_COMMAND,
+  dshWebCommand: DEFAULT_DSH_WEB_COMMAND,
   shortcuts: {} as Record<ShortcutId, KeyBinding[]>,
   editorAutoSave: false,
   editorAutoSaveDelay: 1000,
@@ -625,6 +646,7 @@ export async function loadPreferences(): Promise<Preferences> {
       get<unknown>(KEY_AGENT_PERMISSION_MODE),
     ),
     dshAcpCommand: normalizeDshAcpCommand(get<unknown>(KEY_DSH_ACP_COMMAND)),
+    dshWebCommand: normalizeDshWebCommand(get<unknown>(KEY_DSH_WEB_COMMAND)),
     defaultWorkspaceEnv:
       get<string>(KEY_DEFAULT_WORKSPACE_ENV) ??
       DEFAULT_PREFERENCES.defaultWorkspaceEnv,
@@ -1059,6 +1081,10 @@ export async function setDshAcpCommand(value: string): Promise<void> {
   await writePref(KEY_DSH_ACP_COMMAND, normalizeDshAcpCommand(value));
 }
 
+export async function setDshWebCommand(value: string): Promise<void> {
+  await writePref(KEY_DSH_WEB_COMMAND, normalizeDshWebCommand(value));
+}
+
 export async function setDefaultWorkspaceEnv(value: string): Promise<void> {
   await writePref(KEY_DEFAULT_WORKSPACE_ENV, value);
 }
@@ -1136,6 +1162,7 @@ export async function onPreferencesChange(
     [KEY_AGENT_LAUNCH_COMMANDS]: "agentLaunchCommands",
     [KEY_AGENT_PERMISSION_MODE]: "agentPermissionMode",
     [KEY_DSH_ACP_COMMAND]: "dshAcpCommand",
+    [KEY_DSH_WEB_COMMAND]: "dshWebCommand",
     [KEY_DEFAULT_WORKSPACE_ENV]: "defaultWorkspaceEnv",
     [KEY_SHORTCUTS]: "shortcuts",
     [KEY_EDITOR_AUTO_SAVE]: "editorAutoSave",

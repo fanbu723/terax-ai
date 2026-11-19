@@ -56,6 +56,8 @@ export type CommandPaletteActionContext = {
   toggleHiddenFiles: () => void;
   toggleAi: () => void;
   askAiSelection: () => void;
+  openDshWebGui: () => void;
+  stopDshWebGui: () => void;
   openSettings: () => void;
   openKeyboardShortcuts: () => void;
   spaces: { id: string; name: string }[];
@@ -309,6 +311,22 @@ export function createCommandItems(
       icon: SparklesIcon,
       shortcutId: "ai.askSelection",
       run: ctx.askAiSelection,
+    },
+    {
+      id: "ai.dshWebGui",
+      title: t("Open DSH Web GUI"),
+      group: "AI",
+      keywords: ["dsh", "deepseek", "harness", "web", "gui", "browser"],
+      icon: Globe02Icon,
+      run: ctx.openDshWebGui,
+    },
+    {
+      id: "ai.dshWebGuiStop",
+      title: t("Stop DSH Web GUI"),
+      group: "AI",
+      keywords: ["dsh", "deepseek", "harness", "web", "gui", "stop"],
+      icon: Globe02Icon,
+      run: ctx.stopDshWebGui,
     },
   ];
 }

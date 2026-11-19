@@ -31,6 +31,7 @@ import {
   useSelectionAskAi,
 } from "@/modules/ai";
 import { AiComposerProvider } from "@/modules/ai/lib/composer";
+import { useDshWebStore } from "@/modules/ai/dsh/webStore";
 import { native } from "@/modules/ai/lib/native";
 import {
   CommandPalette,
@@ -1314,6 +1315,22 @@ export default function App() {
             toggleHiddenFiles,
             toggleAi: togglePanelAndFocus,
             askAiSelection: askFromSelection,
+            openDshWebGui: () => {
+              void useDshWebStore
+                .getState()
+                .open()
+                .then((surface) => {
+                  if (surface === null) {
+                    toast.error(
+                      useDshWebStore.getState().error ??
+                        t("Could not open the DSH Web GUI."),
+                    );
+                  } else if (surface === "browser") {
+                    toast.info(t("Opened the DSH Web GUI in your browser."));
+                  }
+                });
+            },
+            stopDshWebGui: () => void useDshWebStore.getState().stop(),
             openSettings: () => void openSettingsWindow(),
             openKeyboardShortcuts: () => void openSettingsWindow("shortcuts"),
             spaces: useSpaces.getState().spaces,

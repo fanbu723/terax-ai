@@ -1413,7 +1413,7 @@ export default {
   // DSH console
   "Ask DSH anything": "询问 DSH",
   "Command Terax spawns for the DSH console. Defaults to the official dsh --profile acp profile from your installed @deepseek-ai/dsh. Plans, slash commands and elicitation are not part of the official ACP surface; use the DSH Web GUI for those.":
-    "Terax 启动 DSH 控制台时执行的命令。默认使用本机 @deepseek-ai/dsh 自带的官方 dsh --profile acp；计划、斜杠命令与 elicitation 不在官方 ACP 范围内，请使用 DSH Web GUI。",
+    "Terax 启动 DSH 控制台时执行的命令。默认使用本机安装的 DSH 自带的官方 dsh --profile acp；计划、斜杠命令与 elicitation 不在官方 ACP 范围内，请使用 DSH 网页界面。",
   Commands: "命令",
   Connect: "连接",
   "Context {used}/{size}": "上下文 {used}/{size}",
@@ -1421,6 +1421,21 @@ export default {
   "DSH connected": "DSH 已连接",
   "DSH connection failed.": "DSH 连接失败。",
   "DSH console": "DSH 控制台",
+  "DSH Web GUI": "DSH 网页界面",
+  "Command Terax runs to start the official DSH Web GUI. Plans, slash commands, elicitation forms and the settings panels live there; the window runs outside the Terax IPC sandbox.":
+    "Terax 启动官方 DSH 网页界面时执行的命令。计划、斜杠命令、elicitation 表单与设置面板都在其中；该窗口在 Terax 的进程隔离之外运行。",
+  "Could not open the DSH Web GUI.": "无法打开 DSH 网页界面。",
+  "Opened the DSH Web GUI in your browser.": "已在浏览器中打开 DSH 网页界面。",
+  "Open the DSH Web GUI": "打开 DSH 网页界面",
+  "Start the DSH Web GUI": "启动 DSH 网页界面",
+  "Open DSH Web GUI": "打开 DSH 网页界面",
+  "Stop DSH Web GUI": "停止 DSH 网页界面",
+  "Open Web GUI": "打开网页界面",
+  "Start Web GUI": "启动网页界面",
+  "Web GUI": "网页界面",
+  "Running on port {port}": "运行中，端口 {port}",
+  "Starting…": "正在启动…",
+  "Not running": "未运行",
   "DSH not connected": "DSH 未连接",
   "DSH sessions": "DSH 会话",
   Decline: "拒绝",
@@ -1432,7 +1447,7 @@ export default {
   Plan: "计划",
   "Select…": "选择…",
   "Send a message to start a DSH agent over the official ACP profile. Tools, permissions and model options work here; open the DSH Web GUI for plans, slash commands and elicitation forms.":
-    "发送消息即可通过官方 ACP profile 启动 DSH 代理；工具、授权与模型选项都可在这里使用，计划、斜杠命令与 elicitation 表单请打开 DSH Web GUI。",
+    "发送消息即可通过官方 ACP profile 启动 DSH 代理；工具、授权与模型选项都可在这里使用，计划、斜杠命令与 elicitation 表单请打开 DSH 网页界面。",
   Sessions: "会话",
   "Show log": "显示日志",
   "Starting DSH… {seconds}s (first run initializes the acp profile)":
