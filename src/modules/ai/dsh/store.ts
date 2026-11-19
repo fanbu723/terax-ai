@@ -14,6 +14,7 @@ import { normalizeDshAcpCommand } from "@/modules/settings/store";
 import { DshAcpClient, type DshClientHandlers } from "./client";
 import {
   buildPersistedState,
+  flushDshPersist,
   loadDshState,
   restoreSessions,
   scheduleDshPersist,
@@ -89,6 +90,7 @@ let client: DshAcpClient | null = null;
 let connecting: Promise<boolean> | null = null;
 /** Set while dispose() tears the bridge down, so the exit is not an error. */
 let closingIntentionally = false;
+let connectCancelled = false;
 let feedbackSeq = 0;
 const attachedSessions = new Set<string>();
 const sendingChats = new Set<string>();
@@ -276,6 +278,7 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
     const command = normalizeDshAcpCommand(config().dshAcpCommand);
     const cwd = sessionCwd();
     closingIntentionally = false;
+    connectCancelled = false;
     set({
       connStatus: "connecting",
       connError: null,
@@ -289,13 +292,20 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
           cwd,
           handlers: connectionHandlers(set),
         });
-        await instance.connect();
+        // Publish it before the handshake so disconnect/cancel can kill a
+        // gateway that is still downloading its first run.
         client = instance;
+        await instance.connect();
         attachedSessions.clear();
         set({ connStatus: "ready", connStartedAt: Date.now() });
         return true;
       } catch (error) {
         client = null;
+        if (connectCancelled) {
+          connectCancelled = false;
+          set({ connStatus: "idle", connError: null });
+          return false;
+        }
         set({ connStatus: "error", connError: errorText(error) });
         return false;
       } finally {
@@ -471,6 +481,7 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
   },
 
   disconnect: async () => {
+    if (get().connStatus === "connecting") connectCancelled = true;
     const current = client;
     client = null;
     attachedSessions.clear();
@@ -482,8 +493,6 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
         await current.dispose();
       } catch {
         // Already gone.
-      } finally {
-        closingIntentionally = false;
       }
     }
   },
@@ -546,7 +555,7 @@ async function sendPrompt(chatSessionId: string, text: string): Promise<void> {
     });
   }
   useDshTargetStore.getState().setBusy(chatSessionId, false);
-  persistSoon();
+  flushDshPersist(snapshot);
 }
 
 function appendSessionNotice(

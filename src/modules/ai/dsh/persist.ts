@@ -62,7 +62,14 @@ export function restoreSessions(
     if (!Array.isArray(saved.items)) continue;
     const state = createDshSessionState(sessionId, saved.updatedAt);
     state.items = saved.items;
-    state.seq = saved.items.length;
+    // Continue ids after the highest restored suffix so a reload cannot reuse
+    // an id that is still in the transcript.
+    let seq = 0;
+    for (const item of saved.items) {
+      const suffix = Number(item.id.replace(/^\D+/, ""));
+      if (Number.isFinite(suffix) && suffix > seq) seq = suffix;
+    }
+    state.seq = seq;
     state.title = saved.title;
     out[sessionId] = state;
   }
