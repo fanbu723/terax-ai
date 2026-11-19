@@ -6,6 +6,7 @@ import {
   checkReadableCanonical,
   checkWritableCanonical,
 } from "../lib/security";
+import { autoDiffFor, useDiffReviewStore } from "../store/diffReviewStore";
 import { newQueuedEditId, usePlanStore } from "../store/planStore";
 import { resolvePath, type ToolContext } from "./context";
 
@@ -16,6 +17,26 @@ function djb2(s: string): number {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   return h >>> 0;
+}
+
+type DiffSnapshot = { originalContent: string; isNewFile: boolean };
+
+/**
+ * Read the pre-write contents for the post-hoc diff tab. `null` means the
+ * file exists but cannot be snapshotted (binary/oversized/unreadable), in
+ * which case the mutation still runs — only the review tab is skipped.
+ */
+async function snapshotForDiff(abs: string): Promise<DiffSnapshot | null> {
+  try {
+    const r = await native.readFile(abs);
+    if (r.kind !== "text") return null;
+    return { originalContent: r.content, isNewFile: false };
+  } catch (error) {
+    if (error === "AI file not found") {
+      return { originalContent: "", isNewFile: true };
+    }
+    return null;
+  }
 }
 
 export function buildFsTools(ctx: ToolContext) {
@@ -156,7 +177,7 @@ export function buildFsTools(ctx: ToolContext) {
         content: z.string(),
       }),
       needsApproval: approvalFor("write_file", ctx),
-      execute: async ({ path, content }) => {
+      execute: async ({ path, content }, { toolCallId }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
         const safety = await checkWritableCanonical(
           reqPath,
@@ -197,9 +218,24 @@ export function buildFsTools(ctx: ToolContext) {
           };
         }
 
+        const auto = autoDiffFor(toolCallId, ctx.getSessionId());
+        const snapshot = auto ? await snapshotForDiff(abs) : null;
+
         try {
           await native.writeFile(abs, content);
           ctx.readCache.set(abs, { size: content.length, hash: djb2(content) });
+          if (auto && snapshot) {
+            useDiffReviewStore.getState().record({
+              toolCallId,
+              sessionId: ctx.getSessionId(),
+              path: abs,
+              originalContent: snapshot.originalContent,
+              proposedContent: content,
+              isNewFile: snapshot.isNewFile,
+              level: auto.level,
+              code: auto.code,
+            });
+          }
           return { path: abs, bytesWritten: content.length, ok: true };
         } catch (e) {
           return { error: String(e), path: abs };

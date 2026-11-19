@@ -22,6 +22,9 @@ export function AiDiffStack({ tabs, activeId, onAccept, onReject }: Props) {
         proposedContent={active.proposedContent}
         status={active.status}
         isNewFile={active.isNewFile}
+        autoApproved={active.autoApproved}
+        riskLevel={active.riskLevel}
+        riskCode={active.riskCode}
         onAccept={() => onAccept(active.approvalId)}
         onReject={() => onReject(active.approvalId)}
       />

@@ -22,6 +22,8 @@ vi.mock("../store/planStore", () => ({
   usePlanStore: { getState: () => ({ active: false, enqueue: vi.fn() }) },
 }));
 
+import { clearApprovalDecisions } from "../lib/approvalDecisions";
+import { useDiffReviewStore } from "../store/diffReviewStore";
 import { buildEditTools } from "./edit";
 
 const toolOptions: ToolExecutionOptions = {
@@ -83,6 +85,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   nativeMock.canonicalize.mockImplementation(async (p: string) => p);
   nativeMock.writeFile.mockResolvedValue(undefined);
+  useDiffReviewStore.getState().clear();
+  clearApprovalDecisions();
 });
 
 describe("edit tool guards", () => {
@@ -228,5 +232,39 @@ describe("multi_edit atomicity", () => {
     });
     expect(result.error).toContain("not unique");
     expect(nativeMock.writeFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("auto-approved edits", () => {
+  it("records the before/after snapshot for the review tab", async () => {
+    setFile("hello world");
+    const tools = buildEditTools(readContext());
+    const toolCallId = "auto-edit";
+    const needsApproval = tools.edit.needsApproval as unknown as (
+      input: unknown,
+      options: { toolCallId: string },
+    ) => boolean;
+    const input = {
+      path: FILE,
+      old_string: "world",
+      new_string: "there",
+    };
+    expect(needsApproval(input, { toolCallId })).toBe(false);
+    const execute = tools.edit.execute;
+    if (!execute) throw new Error("edit tool has no execute");
+    const result = await execute(input, { toolCallId, messages: [] });
+    expect(result).not.toHaveProperty("proposedContent");
+    expect(
+      useDiffReviewStore
+        .getState()
+        .entries.find((entry) => entry.toolCallId === toolCallId),
+    ).toMatchObject({
+      sessionId: "session",
+      path: FILE,
+      originalContent: "hello world",
+      proposedContent: "hello there",
+      level: "low",
+      code: "workspace-path",
+    });
   });
 });

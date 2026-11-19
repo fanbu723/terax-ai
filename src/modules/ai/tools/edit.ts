@@ -3,11 +3,20 @@ import { z } from "zod";
 import { approvalFor } from "../lib/approvalGate";
 import { native } from "../lib/native";
 import { checkWritableCanonical } from "../lib/security";
+import { autoDiffFor, useDiffReviewStore } from "../store/diffReviewStore";
 import { newQueuedEditId, usePlanStore } from "../store/planStore";
 import { resolvePath, type ToolContext } from "./context";
 
 type EditResult =
-  | { ok: true; replacements: number; bytesWritten: number; path: string }
+  | {
+      ok: true;
+      replacements: number;
+      bytesWritten: number;
+      path: string;
+      /** Pre/post contents, used only to open the post-hoc diff tab. */
+      originalContent: string;
+      proposedContent: string;
+    }
   | { error: string; path: string };
 
 function djb2(s: string): number {
@@ -100,6 +109,8 @@ async function applyEdits(
       replacements: totalReplacements,
       bytesWritten: content.length,
       path: abs,
+      originalContent: original,
+      proposedContent: content,
     };
   }
 
@@ -111,10 +122,44 @@ async function applyEdits(
       replacements: totalReplacements,
       bytesWritten: content.length,
       path: abs,
+      originalContent: original,
+      proposedContent: content,
     };
   } catch (err) {
     return { error: String(err), path: abs };
   }
+}
+
+/**
+ * Record an auto-approved mutation for the post-hoc diff tab, then strip the
+ * contents from the tool result: file bodies must not be paid for twice in
+ * the model's context.
+ */
+function finalizeEditResult(
+  result: EditResult,
+  toolCallId: string,
+  ctx: ToolContext,
+) {
+  if ("error" in result) return result;
+  const auto = autoDiffFor(toolCallId, ctx.getSessionId());
+  if (auto) {
+    useDiffReviewStore.getState().record({
+      toolCallId,
+      sessionId: ctx.getSessionId(),
+      path: result.path,
+      originalContent: result.originalContent,
+      proposedContent: result.proposedContent,
+      isNewFile: false,
+      level: auto.level,
+      code: auto.code,
+    });
+  }
+  return {
+    ok: true as const,
+    replacements: result.replacements,
+    bytesWritten: result.bytesWritten,
+    path: result.path,
+  };
 }
 
 export function buildEditTools(ctx: ToolContext) {
@@ -133,7 +178,10 @@ export function buildEditTools(ctx: ToolContext) {
         replace_all: z.boolean().optional(),
       }),
       needsApproval: approvalFor("edit", ctx),
-      execute: async ({ path, old_string, new_string, replace_all }) => {
+      execute: async (
+        { path, old_string, new_string, replace_all },
+        { toolCallId },
+      ) => {
         const reqPath = resolvePath(path, ctx.getCwd());
         const safety = await checkWritableCanonical(
           reqPath,
@@ -148,11 +196,15 @@ export function buildEditTools(ctx: ToolContext) {
             path: abs,
           };
         }
-        return applyEdits(
-          abs,
-          [{ old_string, new_string, replace_all }],
-          "edit",
-          ctx.readCache,
+        return finalizeEditResult(
+          await applyEdits(
+            abs,
+            [{ old_string, new_string, replace_all }],
+            "edit",
+            ctx.readCache,
+          ),
+          toolCallId,
+          ctx,
         );
       },
     }),
@@ -173,7 +225,7 @@ export function buildEditTools(ctx: ToolContext) {
           .min(1),
       }),
       needsApproval: approvalFor("multi_edit", ctx),
-      execute: async ({ path, edits }) => {
+      execute: async ({ path, edits }, { toolCallId }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
         const safety = await checkWritableCanonical(
           reqPath,
@@ -188,7 +240,11 @@ export function buildEditTools(ctx: ToolContext) {
             path: abs,
           };
         }
-        return applyEdits(abs, edits, "multi_edit", ctx.readCache);
+        return finalizeEditResult(
+          await applyEdits(abs, edits, "multi_edit", ctx.readCache),
+          toolCallId,
+          ctx,
+        );
       },
     }),
   } as const;
