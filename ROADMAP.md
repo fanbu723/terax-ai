@@ -54,6 +54,14 @@ The themes below frame every scope decision.
 - [x] Prebuilt and custom app and terminal themes with import and sharing
 - [x] Background images with adjustable opacity and blur
 - [x] App-theme-aware and independently selectable editor themes
+- [x] Maple Mono NF CN preferred for the UI, terminal, editor, and code blocks, with Inter and JetBrains Mono fallbacks
+- [x] Automatic Nerd Font detection plus separate interface and terminal/editor font overrides in Settings
+
+### Localization
+
+- [x] Complete Simplified Chinese (zh-CN) UI copy for both the main and settings windows
+- [x] Lazily loaded zh-CN locale pack kept inside a dedicated bundle budget
+- [x] Coverage and hardcoded-copy audits that fail the build on stale or untranslated zh-CN UI copy
 
 ### File Explorer
 
