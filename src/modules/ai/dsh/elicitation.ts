@@ -4,7 +4,7 @@ import type {
   EnumOption,
 } from "@agentclientprotocol/sdk";
 
-export type DshFormOption = {
+type DshFormOption = {
   value: string;
   label: string;
   description?: string | null;
