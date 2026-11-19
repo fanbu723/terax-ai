@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { approvalFor } from "../lib/approvalGate";
 import { native } from "../lib/native";
 import {
   checkReadableCanonical,
@@ -42,7 +43,10 @@ export function buildFsTools(ctx: ToolContext) {
       }),
       execute: async ({ path, offset, limit }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkReadableCanonical(reqPath, native.canonicalize);
+        const safety = await checkReadableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         try {
@@ -58,7 +62,12 @@ export function buildFsTools(ctx: ToolContext) {
           const hash = djb2(r.content);
           const isFullRead = offset === undefined && limit === undefined;
           const prior = ctx.readCache.get(abs);
-          if (isFullRead && prior && prior.size === r.size && prior.hash === hash) {
+          if (
+            isFullRead &&
+            prior &&
+            prior.size === r.size &&
+            prior.hash === hash
+          ) {
             return { path: abs, unchanged: true, size: r.size };
           }
           ctx.readCache.set(abs, { size: r.size, hash });
@@ -78,7 +87,10 @@ export function buildFsTools(ctx: ToolContext) {
               size: r.size,
               total_lines: lines.length,
               ...(truncated
-                ? { truncated: true, hint: "call read_file with offset to continue" }
+                ? {
+                    truncated: true,
+                    hint: "call read_file with offset to continue",
+                  }
                 : {}),
             };
           }
@@ -118,7 +130,10 @@ export function buildFsTools(ctx: ToolContext) {
       }),
       execute: async ({ path }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkReadableCanonical(reqPath, native.canonicalize);
+        const safety = await checkReadableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         try {
@@ -135,15 +150,18 @@ export function buildFsTools(ctx: ToolContext) {
 
     write_file: tool({
       description:
-        "Create or overwrite a file with the given content. Always asks the user before running. Prefer `edit` / `multi_edit` for in-place changes — only use `write_file` for creating a brand-new file or fully replacing a tiny one.",
+        "Create or overwrite a file with the given content. Approval depends on the permission mode. Prefer `edit` / `multi_edit` for in-place changes — only use `write_file` for creating a brand-new file or fully replacing a tiny one.",
       inputSchema: z.object({
         path: z.string(),
         content: z.string(),
       }),
-      needsApproval: true,
+      needsApproval: approvalFor("write_file", ctx),
       execute: async ({ path, content }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
 
@@ -191,14 +209,17 @@ export function buildFsTools(ctx: ToolContext) {
 
     create_directory: tool({
       description:
-        "Create a directory (and any missing parents). Always asks the user before running.",
+        "Create a directory (and any missing parents). Approval depends on the permission mode.",
       inputSchema: z.object({
         path: z.string(),
       }),
-      needsApproval: true,
+      needsApproval: approvalFor("create_directory", ctx),
       execute: async ({ path }) => {
         const reqPath = resolvePath(path, ctx.getCwd());
-        const safety = await checkWritableCanonical(reqPath, native.canonicalize);
+        const safety = await checkWritableCanonical(
+          reqPath,
+          native.canonicalize,
+        );
         if (!safety.ok) return { error: safety.reason, path: reqPath };
         const abs = safety.canonical;
         if (usePlanStore.getState().active) {
