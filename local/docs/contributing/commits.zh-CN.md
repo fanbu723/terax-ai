@@ -1,6 +1,6 @@
 # 提交规范（Git Commit Conventions）
 
-本文件是 [CONTRIBUTING.md](../../CONTRIBUTING.md) 中「Branches」「Commits & PRs」两节的展开版，
+本文件是 [CONTRIBUTING.md](../../../CONTRIBUTING.md) 中「Branches」「Commits & PRs」两节的展开版，
 用于统一本仓库的提交信息、分支命名与 PR 标题。两者冲突时以 `CONTRIBUTING.md` 为准。
 
 适用范围：本仓库的全部提交（含 fork 上的个人分支）。上游不接受从 fork 的 `main` 直接开 PR，
@@ -153,7 +153,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ## 9. PR 标题与合并方式
 
 - **PR 标题就是 squash 后的提交信息**，格式必须与提交信息一致（第 2–5 节）。
-- PR 正文按 [PR 模板](../../.github/pull_request_template.md) 填写：What / Why / How / Testing / Screenshots / Notes。
+- PR 正文按 [PR 模板](../../../.github/PULL_REQUEST_TEMPLATE.md) 填写：What / Why / How / Testing / Screenshots / Notes。
 - 多数 PR 走 **squash merge**：分支内的中间提交可以自由编辑，但标题必须合规。
 - 多提交且每个提交都可独立编译、独立解释时，维护者可选择 merge commit（安全审计、多步重构）。此时分支内每个提交都要符合本规范。
 - 合并后由平台追加 `(#PR号)`，无需手写。
@@ -242,14 +242,14 @@ This reverts commit 1a2b3c4. The split layout broke tab restore on Windows.
 
 ## 14. 与工具链的关系
 
-- **CI**（[ci.yml](../../.github/workflows/ci.yml)）不校验提交信息格式，因此格式靠自觉；评审与 squash 时由维护者把关。
-- **CodeRabbit**（[.coderabbit.yaml](../../.coderabbit.yaml)）会做第一轮自动评审，它不替代人工评审。
+- **CI**（[ci.yml](../../../.github/workflows/ci.yml)）不校验提交信息格式，因此格式靠自觉；评审与 squash 时由维护者把关。
+- **CodeRabbit**（[.coderabbit.yaml](../../../.coderabbit.yaml)）会做第一轮自动评审，它不替代人工评审。
 - **发布说明**：`feat` / `fix` / `perf` / `security` 是发布说明的来源，写错 type 会直接影响发布内容。
 - 本仓库当前**没有** commit-msg hook，也没有 commitlint；如后续引入，本文件即为规则来源。
 
 ## 15. 相关文档
 
-- [CONTRIBUTING.md](../../CONTRIBUTING.md)：分支、PR 与质量门槛的权威说明
-- [PR 模板](../../.github/pull_request_template.md)：PR 正文结构
-- [测试指南](testing.md)：什么改动必须带测试
-- [TERAX.md](../../TERAX.md)：架构与代码约定的唯一事实来源
+- [CONTRIBUTING.md](../../../CONTRIBUTING.md)：分支、PR 与质量门槛的权威说明
+- [PR 模板](../../../.github/PULL_REQUEST_TEMPLATE.md)：PR 正文结构
+- [测试指南](../../../docs/contributing/testing.md)：什么改动必须带测试
+- [TERAX.md](../../../TERAX.md)：架构与代码约定的唯一事实来源
