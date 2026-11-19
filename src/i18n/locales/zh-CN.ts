@@ -1409,4 +1409,36 @@ export default {
   "This will revert all your custom keyboard shortcuts to their factory defaults. This action cannot be undone.":
     "这将把所有自定义键盘快捷键恢复为出厂默认值。此操作无法撤销。",
   Unassigned: "未分配",
+
+  // DSH console
+  "Ask DSH anything   -   / for commands": "询问 DSH - 输入 / 查看命令",
+  "Command Terax spawns for the DSH console. The default gateway supports plan, slash commands and elicitation; its first run downloads about 330 MB. Use dsh --profile acp for the official automation-only server.":
+    "Terax 启动 DSH 控制台时执行的命令。默认 gateway 支持 plan、斜杠命令与 elicitation，首次运行会下载约 330 MB；官方 automation-only 服务端可用 dsh --profile acp。",
+  Commands: "命令",
+  Connect: "连接",
+  "Context {used}/{size}": "上下文 {used}/{size}",
+  "DSH commands": "DSH 命令",
+  "DSH connected": "DSH 已连接",
+  "DSH connection failed.": "DSH 连接失败。",
+  "DSH console": "DSH 控制台",
+  "DSH not connected": "DSH 未连接",
+  "DSH sessions": "DSH 会话",
+  Decline: "拒绝",
+  Disconnect: "断开连接",
+  "Enter a valid value.": "请输入有效值。",
+  "Leave empty to use the default.": "留空则使用默认命令。",
+  "Needs permission": "需要授权",
+  "No DSH sessions for this workspace.": "此工作区没有 DSH 会话。",
+  Plan: "计划",
+  "Select…": "选择…",
+  "Send a message to start a DSH agent. It runs through `dsh-acp-gateway` with its own plan, commands and approvals.":
+    "发送消息即可启动 DSH 代理；它通过 `dsh-acp-gateway` 运行，自带 plan、命令与审批。",
+  Sessions: "会话",
+  "Show log": "显示日志",
+  "Starting DSH… {seconds}s (first run downloads the gateway)":
+    "正在启动 DSH… {seconds} 秒（首次运行会下载 gateway）",
+  Submit: "提交",
+  "This field is required.": "此项为必填。",
+  Thought: "思考",
+  "{done}/{total} done": "已完成 {done}/{total}",
 } as const;

@@ -44,6 +44,10 @@ import { useMiniWindowGeometry } from "../lib/useMiniWindowGeometry";
 import { useAgentsStore } from "../store/agentsStore";
 import { getOrCreateChat } from "../store/chatRuntime";
 import { useChatStore } from "../store/chatStore";
+import { DshConsole } from "../dsh/components/DshConsole";
+import { DshTargetSwitch } from "../dsh/components/DshTargetSwitch";
+import { activeDshSession, useDshStore } from "../dsh/store";
+import { dshTargetFor, useDshTargetStore } from "../dsh/target";
 import { normalizePermissionMode } from "../lib/permissions";
 import { usePermissionStore } from "../store/permissionStore";
 import { usePlanStore } from "../store/planStore";
@@ -191,44 +195,54 @@ function Body({
 }) {
   const focusInput = useChatStore((s) => s.focusInput);
   const step = useChatStore((s) => s.agentMeta.step);
+  const target = useDshTargetStore((s) => dshTargetFor(s, sessionId));
+  const dshSession = useDshStore((s) => activeDshSession(s, sessionId));
 
   const chat = useMemo(() => getOrCreateChat(sessionId), [sessionId]);
   const helpers = useChat<UIMessage>({ chat });
   const isBusy =
     helpers.status === "submitted" || helpers.status === "streaming";
+  const dshTarget = target === "dsh";
 
   return (
     <>
       <Header
         step={step}
-        isBusy={isBusy}
+        isBusy={dshTarget ? Boolean(dshSession?.busy) : isBusy}
         onClose={onClose}
         onExpand={onExpand}
-        messages={helpers.messages}
+        messages={dshTarget ? undefined : helpers.messages}
+        chatSessionId={sessionId}
         onHeaderPointerDown={onHeaderPointerDown}
       />
 
-      <PermissionStrip />
-      <PlanModeStrip />
+      {dshTarget ? (
+        <DshConsole chatSessionId={sessionId} />
+      ) : (
+        <>
+          <PermissionStrip />
+          <PlanModeStrip />
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {helpers.messages.length === 0 ? (
-          <EmptyState onPick={focusInput} />
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col [&_.text-sm]:text-[12px] [&_p]:leading-relaxed">
-            <AiChatView
-              messages={helpers.messages}
-              status={helpers.status}
-              error={helpers.error}
-              clearError={helpers.clearError}
-              addToolApprovalResponse={helpers.addToolApprovalResponse}
-              stop={helpers.stop}
-            />
+          <div className="flex min-h-0 flex-1 flex-col">
+            {helpers.messages.length === 0 ? (
+              <EmptyState onPick={focusInput} />
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col [&_.text-sm]:text-[12px] [&_p]:leading-relaxed">
+                <AiChatView
+                  messages={helpers.messages}
+                  status={helpers.status}
+                  error={helpers.error}
+                  clearError={helpers.clearError}
+                  addToolApprovalResponse={helpers.addToolApprovalResponse}
+                  stop={helpers.stop}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <TodoStrip sessionId={sessionId} />
+          <TodoStrip sessionId={sessionId} />
+        </>
+      )}
     </>
   );
 }
@@ -326,6 +340,7 @@ function Header({
   isBusy,
   onClose,
   messages,
+  chatSessionId,
   onHeaderPointerDown,
 }: {
   step: string | null;
@@ -333,11 +348,15 @@ function Header({
   onClose: () => void;
   onExpand: () => void;
   messages?: UIMessage[];
+  chatSessionId?: string | null;
   onHeaderPointerDown: (e: React.PointerEvent) => void;
 }) {
   const t = useT();
   const customAgents = useAgentsStore((s) => s.customAgents);
   void customAgents;
+  const target = useDshTargetStore((s) =>
+    dshTargetFor(s, chatSessionId ?? null),
+  );
 
   return (
     <div
@@ -345,8 +364,9 @@ function Header({
       className="relative flex h-11 shrink-0 cursor-grab items-center justify-between gap-2 border-b border-border/60 px-3 active:cursor-grabbing"
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <AgentSwitcher isMiniWindow />
-        {messages !== undefined ? (
+        <DshTargetSwitch chatSessionId={chatSessionId ?? null} />
+        {target === "dsh" ? null : <AgentSwitcher isMiniWindow />}
+        {messages !== undefined && target !== "dsh" ? (
           <ContextIndicator messages={messages} />
         ) : null}
       </div>

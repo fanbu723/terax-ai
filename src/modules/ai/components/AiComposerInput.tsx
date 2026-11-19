@@ -9,6 +9,8 @@ import { useComposer } from "../lib/composer";
 import { SLASH_COMMANDS } from "../lib/slashCommands";
 import { useChatStore } from "../store/chatStore";
 import { useSnippetsStore } from "../store/snippetsStore";
+import { useDshStore } from "../dsh/store";
+import { dshTargetFor, useDshTargetStore } from "../dsh/target";
 import { AgentSwitcher } from "./AgentSwitcher";
 import { FilePickerContent } from "./FilePicker";
 import { PermissionSwitcher } from "./PermissionSwitcher";
@@ -63,6 +65,15 @@ function detectFileTrigger(value: string, caret: number): FileTrigger | null {
 export function AiComposerInput() {
   const t = useT();
   const c = useComposer();
+  const chatSessionId = useChatStore((s) => s.activeSessionId);
+  const target = useDshTargetStore((s) => dshTargetFor(s, chatSessionId));
+  const dshSessionId = useDshStore((s) =>
+    chatSessionId ? s.currentByChat[chatSessionId] : undefined,
+  );
+  const dshCommands =
+    useDshStore((s) =>
+      dshSessionId ? s.sessions[dshSessionId]?.commands : undefined,
+    ) ?? [];
   const snippets = useSnippetsStore((s) => s.snippets);
   const workspaceRoot = useChatStore((s) => s.live.getWorkspaceRoot());
 
@@ -103,6 +114,18 @@ export function AiComposerInput() {
   const filteredItems = useMemo<PickerItem[]>(() => {
     if (!trigger) return [];
     const q = trigger.query;
+    if (target === "dsh") {
+      if (trigger.char !== "/") return [];
+      const lower = q.toLowerCase();
+      return dshCommands
+        .filter(
+          (command) =>
+            !lower ||
+            command.name.toLowerCase().includes(lower) ||
+            command.description.toLowerCase().includes(lower),
+        )
+        .map((command) => ({ kind: "dsh-command" as const, command }));
+    }
     const cmdItems: PickerItem[] = Object.values(SLASH_COMMANDS)
       .filter(
         (c) => !q || c.name.includes(q) || c.label.toLowerCase().includes(q),
@@ -119,7 +142,7 @@ export function AiComposerInput() {
       )
       .map((snippet) => ({ kind: "snippet", snippet }));
     return [...cmdItems, ...snipItems];
-  }, [trigger, snippets]);
+  }, [trigger, snippets, target, dshCommands]);
 
   const FILE_PICKER_CAP = 30;
   const filteredFiles = useMemo<string[]>(() => {
@@ -148,6 +171,21 @@ export function AiComposerInput() {
     if (!trigger) return;
     const before = c.value.slice(0, trigger.start);
     const afterRaw = c.value.slice(trigger.end);
+    if (item.kind === "dsh-command") {
+      const needsSpace = afterRaw.length === 0 || !/^\s/.test(afterRaw);
+      const insert = `/${item.command.name}${needsSpace ? " " : ""}`;
+      c.setValue(`${before}${insert}${afterRaw}`);
+      setTrigger(null);
+      setActiveIndex(0);
+      requestAnimationFrame(() => {
+        const el = c.textareaRef.current;
+        if (!el) return;
+        const caret = before.length + insert.length;
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      });
+      return;
+    }
     let insert = "";
     if (item.kind === "snippet") {
       const needsSpace = afterRaw.length === 0 || !/^\s/.test(afterRaw);
@@ -260,17 +298,25 @@ export function AiComposerInput() {
                   c.submit();
                 }
               }}
-              placeholder={t(
-                "Ask Terax anything   -   # for snippets and commands, @ for files",
-              )}
+              placeholder={
+                target === "dsh"
+                  ? t("Ask DSH anything   -   / for commands")
+                  : t(
+                      "Ask Terax anything   -   # for snippets and commands, @ for files",
+                    )
+              }
               rows={1}
               className={cn(
                 "max-h-40 flex-1 resize-none bg-transparent text-[13px] leading-relaxed outline-none",
                 "placeholder:text-muted-foreground/60",
               )}
             />
-            <PermissionSwitcher />
-            <AgentSwitcher />
+            {target === "dsh" ? null : (
+              <>
+                <PermissionSwitcher />
+                <AgentSwitcher />
+              </>
+            )}
           </div>
         </PopoverAnchor>
         {fileTrigger ? (

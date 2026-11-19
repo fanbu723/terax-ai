@@ -10,6 +10,7 @@ import { useWhisperRecording } from "../hooks/useWhisperRecording";
 import { expandSnippetTokens, type Snippet } from "../lib/snippets";
 import { tryRunSlashCommand, type SlashCommandMeta } from "./slashCommands";
 import { getChat, useChatStore } from "../store/chatStore";
+import { dshTargetFor, useDshTargetStore } from "../dsh/target";
 import { useSnippetsStore } from "../store/snippetsStore";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 
@@ -73,7 +74,14 @@ type ProviderProps = {
 export function AiComposerProvider({ children }: ProviderProps) {
   const sessionId = useChatStore((s) => s.activeSessionId);
   const status = useChatStore((s) => s.agentMeta.status);
-  const isBusy = status === "thinking" || status === "streaming";
+  const target = useDshTargetStore((s) => dshTargetFor(s, sessionId));
+  const dshBusy = useDshTargetStore((s) =>
+    sessionId ? (s.busyByChat[sessionId] ?? false) : false,
+  );
+  const isBusy =
+    target === "dsh"
+      ? dshBusy
+      : status === "thinking" || status === "streaming";
 
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<FileAttachment[]>([]);
@@ -218,6 +226,27 @@ export function AiComposerProvider({ children }: ProviderProps) {
   const submit = () => {
     if (isBusy) return;
     const trimmed = value.trim();
+    if (target === "dsh") {
+      if (!sessionId) return;
+      if (!trimmed && files.length === 0) return;
+      const textParts = files
+        .map((f) => f.text ?? "")
+        .filter((text) => text.length > 0);
+      if (files.some((f) => f.kind === "image")) {
+        console.warn("[terax] DSH console ignores image attachments");
+      }
+      const prompt = [...textParts, trimmed].filter(Boolean).join("\n\n");
+      if (!prompt) return;
+      void import("../dsh/store").then(({ useDshStore }) => {
+        void useDshStore.getState().send(sessionId, prompt);
+      });
+      setValue("");
+      setFiles([]);
+      setPickedSnippets([]);
+      setPickedCommands([]);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
     if (
       !trimmed &&
       files.length === 0 &&
@@ -324,6 +353,12 @@ export function AiComposerProvider({ children }: ProviderProps) {
 
   const stop = () => {
     if (!sessionId) return;
+    if (target === "dsh") {
+      void import("../dsh/store").then(({ useDshStore }) => {
+        void useDshStore.getState().cancel(sessionId);
+      });
+      return;
+    }
     void getChat(sessionId)?.stop();
   };
 

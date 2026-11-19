@@ -1,13 +1,16 @@
 import { PopoverContent } from "@/components/ui/popover";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import type { AvailableCommand } from "@agentclientprotocol/sdk";
+import { CommandLineIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { type SlashCommandMeta, slashCommandLabel } from "../lib/slashCommands";
 import type { Snippet } from "../lib/snippets";
 
 export type PickerItem =
   | { kind: "snippet"; snippet: Snippet }
-  | { kind: "command"; command: SlashCommandMeta };
+  | { kind: "command"; command: SlashCommandMeta }
+  | { kind: "dsh-command"; command: AvailableCommand };
 
 type Props = {
   items: readonly PickerItem[];
@@ -24,6 +27,7 @@ export function SnippetPickerContent({
 }: Props) {
   const t = useT();
   const commands = items.filter((it) => it.kind === "command");
+  const dshCommands = items.filter((it) => it.kind === "dsh-command");
   const snippets = items.filter((it) => it.kind === "snippet");
   let cursor = -1;
 
@@ -43,6 +47,49 @@ export function SnippetPickerContent({
         </div>
       ) : (
         <div className="max-h-64 overflow-y-auto py-1">
+          {dshCommands.length > 0 && (
+            <>
+              <SectionHeader label={t("DSH commands")} />
+              <ul>
+                {dshCommands.map((it) => {
+                  cursor += 1;
+                  const i = cursor;
+                  if (it.kind !== "dsh-command") return null;
+                  const command = it.command;
+                  return (
+                    <li key={`dsh-${command.name}`}>
+                      <button
+                        type="button"
+                        onMouseEnter={() => onHover(i)}
+                        onClick={() => onPick(it)}
+                        className={cn(
+                          "flex w-full items-start gap-2 px-2 py-1.5 text-left text-[12px]",
+                          i === activeIndex
+                            ? "bg-accent"
+                            : "hover:bg-accent/60",
+                        )}
+                      >
+                        <HugeiconsIcon
+                          icon={CommandLineIcon}
+                          size={13}
+                          strokeWidth={1.75}
+                          className="mt-0.5 text-muted-foreground"
+                        />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-mono text-muted-foreground">
+                            /{command.name}
+                          </span>
+                          <span className="line-clamp-1 text-[10.5px] text-muted-foreground">
+                            {command.description}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
           {commands.length > 0 && (
             <>
               <SectionHeader label={t("Pre-built snippets")} />
