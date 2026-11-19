@@ -12,7 +12,7 @@ type DshTargetState = {
 
 /**
  * Kept free of the ACP client so the eager composer can read the target and
- * busy state without pulling the gateway protocol into the startup bundle.
+ * busy state without pulling the ACP protocol into the startup bundle.
  */
 export const useDshTargetStore = create<DshTargetState>((set) => ({
   targetByChat: {},

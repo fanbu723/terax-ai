@@ -1411,9 +1411,9 @@ export default {
   Unassigned: "未分配",
 
   // DSH console
-  "Ask DSH anything   -   / for commands": "询问 DSH - 输入 / 查看命令",
-  "Command Terax spawns for the DSH console. The default gateway supports plan, slash commands and elicitation; its first run downloads about 330 MB. Use dsh --profile acp for the official automation-only server.":
-    "Terax 启动 DSH 控制台时执行的命令。默认 gateway 支持 plan、斜杠命令与 elicitation，首次运行会下载约 330 MB；官方 automation-only 服务端可用 dsh --profile acp。",
+  "Ask DSH anything": "询问 DSH",
+  "Command Terax spawns for the DSH console. Defaults to the official dsh --profile acp profile from your installed @deepseek-ai/dsh. Plans, slash commands and elicitation are not part of the official ACP surface; use the DSH Web GUI for those.":
+    "Terax 启动 DSH 控制台时执行的命令。默认使用本机 @deepseek-ai/dsh 自带的官方 dsh --profile acp；计划、斜杠命令与 elicitation 不在官方 ACP 范围内，请使用 DSH Web GUI。",
   Commands: "命令",
   Connect: "连接",
   "Context {used}/{size}": "上下文 {used}/{size}",
@@ -1431,12 +1431,12 @@ export default {
   "No DSH sessions for this workspace.": "此工作区没有 DSH 会话。",
   Plan: "计划",
   "Select…": "选择…",
-  "Send a message to start a DSH agent. It runs through `dsh-acp-gateway` with its own plan, commands and approvals.":
-    "发送消息即可启动 DSH 代理；它通过 `dsh-acp-gateway` 运行，自带 plan、命令与审批。",
+  "Send a message to start a DSH agent over the official ACP profile. Tools, permissions and model options work here; open the DSH Web GUI for plans, slash commands and elicitation forms.":
+    "发送消息即可通过官方 ACP profile 启动 DSH 代理；工具、授权与模型选项都可在这里使用，计划、斜杠命令与 elicitation 表单请打开 DSH Web GUI。",
   Sessions: "会话",
   "Show log": "显示日志",
-  "Starting DSH… {seconds}s (first run downloads the gateway)":
-    "正在启动 DSH… {seconds} 秒（首次运行会下载 gateway）",
+  "Starting DSH… {seconds}s (first run initializes the acp profile)":
+    "正在启动 DSH… {seconds} 秒（首次运行会初始化 acp profile）",
   Submit: "提交",
   "This field is required.": "此项为必填。",
   Thought: "思考",

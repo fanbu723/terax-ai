@@ -299,11 +299,9 @@ export function AiComposerInput() {
                 }
               }}
               placeholder={
-                target === "dsh"
-                  ? t("Ask DSH anything   -   / for commands")
-                  : t(
-                      "Ask Terax anything   -   # for snippets and commands, @ for files",
-                    )
+                target === "dsh" ? t("Ask DSH anything") : t(
+                  "Ask Terax anything   -   # for snippets and commands, @ for files",
+                )
               }
               rows={1}
               className={cn(

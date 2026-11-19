@@ -87,7 +87,7 @@ The themes below frame every scope decision.
 - [x] Three agent permission modes (manual, risk-assessed assisted, allow all) with per-session switching and a configurable default
 - [x] Deterministic tool-risk assessment, auto-approved mutations reviewed in a diff tab, and per-call annotations in the transcript
 - [x] Keyboard approve/deny for pending tool approvals, with configurable chords
-- [x] DSH console in the agent window over ACP (gateway): plan, slash commands, elicitation, model/mode options and session resume
+- [x] DSH console in the agent window over the official ACP profile: streaming, tools, permissions, model/reasoning options and session resume; plan, slash commands and elicitation open in the managed DSH Web GUI
 - [x] Workspace file picker
 - [x] Auto-compact for long context
 

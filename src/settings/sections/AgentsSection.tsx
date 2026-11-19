@@ -663,7 +663,7 @@ function DshConsoleBlock({ value }: { value: string }) {
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         {t(
-          "Command Terax spawns for the DSH console. The default gateway supports plan, slash commands and elicitation; its first run downloads about 330 MB. Use dsh --profile acp for the official automation-only server.",
+          "Command Terax spawns for the DSH console. Defaults to the official dsh --profile acp profile from your installed @deepseek-ai/dsh. Plans, slash commands and elicitation are not part of the official ACP surface; use the DSH Web GUI for those.",
         )}
       </p>
       <Input

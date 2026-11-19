@@ -690,9 +690,12 @@ function ConnectionBar({ chatSessionId }: { chatSessionId: string }) {
         <span className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
           <Spinner className="size-2.5" />
           <span className="truncate">
-            {t("Starting DSH… {seconds}s (first run downloads the gateway)", {
-              seconds: Math.round(elapsed / 1000),
-            })}
+            {t(
+              "Starting DSH… {seconds}s (first run initializes the acp profile)",
+              {
+                seconds: Math.round(elapsed / 1000),
+              },
+            )}
           </span>
         </span>
       ) : connStatus === "error" ? (
@@ -883,7 +886,7 @@ export const DshConsole = memo(function DshConsole({
             </div>
             <div className="max-w-64 text-[10.5px] text-muted-foreground">
               {t(
-                "Send a message to start a DSH agent. It runs through `dsh-acp-gateway` with its own plan, commands and approvals.",
+                "Send a message to start a DSH agent over the official ACP profile. Tools, permissions and model options work here; open the DSH Web GUI for plans, slash commands and elicitation forms.",
               )}
             </div>
             {connStatus !== "ready" ? (

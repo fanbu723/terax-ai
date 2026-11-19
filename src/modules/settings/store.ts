@@ -301,8 +301,13 @@ const KEY_AGENT_NOTIFICATION_SOUND = "agentNotificationSound";
 const KEY_AGENT_LAUNCH_COMMANDS = "agentLaunchCommands";
 const KEY_DSH_ACP_COMMAND = "dshAcpCommand";
 
-/** Pinned gateway build: it carries plan, slash-command and elicitation support. */
-export const DEFAULT_DSH_ACP_COMMAND = "npx -y dsh-acp-gateway@3.12.0";
+/**
+ * Official automation profile shipped by `@deepseek-ai/dsh`. It is version
+ * matched with the installed CLI, unlike the third-party gateway it replaces.
+ */
+export const DEFAULT_DSH_ACP_COMMAND = "dsh --profile acp";
+/** The pinned third-party gateway that older builds used as the default. */
+export const LEGACY_DSH_ACP_COMMAND = "npx -y dsh-acp-gateway@3.12.0";
 const MAX_DSH_ACP_COMMAND_LENGTH = 512;
 const DSH_ACP_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
@@ -317,7 +322,9 @@ export function normalizeDshAcpCommand(value: unknown): string {
   ) {
     return DEFAULT_DSH_ACP_COMMAND;
   }
-  return command;
+  // A stored value equal to the retired default was never a user choice: move
+  // it to the official profile. Any other explicit command is left alone.
+  return command === LEGACY_DSH_ACP_COMMAND ? DEFAULT_DSH_ACP_COMMAND : command;
 }
 const KEY_DEFAULT_WORKSPACE_ENV = "defaultWorkspaceEnv";
 const KEY_SHORTCUTS = "shortcuts";

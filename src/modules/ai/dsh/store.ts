@@ -329,8 +329,8 @@ export const useDshStore = create<DshStoreState>((set, get) => ({
           cwd,
           handlers: connectionHandlers(set),
         });
-        // Publish it before the handshake so disconnect/cancel can kill a
-        // gateway that is still downloading its first run.
+        // Publish it before the handshake so disconnect/cancel can kill an
+        // agent that is still booting its profile on first run.
         client = instance;
         await instance.connect();
         attachedSessions.clear();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DSH_ACP_COMMAND,
+  LEGACY_DSH_ACP_COMMAND,
   normalizeDshAcpCommand,
 } from "./store";
 
@@ -27,9 +28,14 @@ describe("normalizeDshAcpCommand", () => {
     }
   });
 
-  it("ships the pinned gateway as the default", () => {
-    expect(DEFAULT_DSH_ACP_COMMAND).toBe(
-      "npx -y dsh-acp-gateway@3.12.0",
+  it("ships the official dsh acp profile as the default", () => {
+    expect(DEFAULT_DSH_ACP_COMMAND).toBe("dsh --profile acp");
+  });
+
+  it("migrates the retired gateway default but keeps custom commands", () => {
+    expect(normalizeDshAcpCommand(LEGACY_DSH_ACP_COMMAND)).toBe(
+      DEFAULT_DSH_ACP_COMMAND,
     );
+    expect(normalizeDshAcpCommand("my-agent --acp")).toBe("my-agent --acp");
   });
 });
