@@ -258,6 +258,7 @@ function Bridge({ sessionId, openAiDiffTab, closeAiDiffTab }: BridgeProps) {
   const autoDiffs = useDiffReviewStore((s) => s.entries);
   const openedAutoRef = useRef<Set<string>>(new Set());
   const autoTabOrderRef = useRef<string[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset bookkeeping when the session changes
   useEffect(() => {
     openedAutoRef.current = new Set();
     autoTabOrderRef.current = [];

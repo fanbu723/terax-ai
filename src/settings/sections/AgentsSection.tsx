@@ -577,6 +577,7 @@ function PermissionsBlock({ value }: { value: PermissionMode }) {
           return (
             <label
               key={mode}
+              htmlFor={`permission-mode-${mode}`}
               className={cn(
                 "flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors",
                 active
@@ -584,7 +585,11 @@ function PermissionsBlock({ value }: { value: PermissionMode }) {
                   : "border-border/60 hover:bg-muted/40",
               )}
             >
-              <RadioGroupItem value={mode} className="mt-0.5" />
+              <RadioGroupItem
+                id={`permission-mode-${mode}`}
+                value={mode}
+                className="mt-0.5"
+              />
               <HugeiconsIcon
                 icon={Icon}
                 size={14}

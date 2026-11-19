@@ -13,7 +13,7 @@ import { getApprovalDecision } from "../lib/approvalDecisions";
 import type { RiskCode, RiskLevel } from "../lib/risk";
 import { usePlanStore } from "./planStore";
 
-export type AutoDiffEntry = {
+type AutoDiffEntry = {
   toolCallId: string;
   sessionId: string | null;
   path: string;
@@ -25,7 +25,7 @@ export type AutoDiffEntry = {
   at: number;
 };
 
-export type AutoDiffRecord = Omit<AutoDiffEntry, "at">;
+type AutoDiffRecord = Omit<AutoDiffEntry, "at">;
 
 const MAX_ENTRIES = 50;
 

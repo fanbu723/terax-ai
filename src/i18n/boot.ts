@@ -4,9 +4,9 @@ import { detectLocale, isLocale, type Locale, setLocale } from "./index";
 export type UiLanguagePref = "auto" | Locale;
 
 export const UI_LANGUAGE_STORAGE_KEY = "terax-ui-language";
-export const UI_LANGUAGE_AUTO = "auto" as const;
+const UI_LANGUAGE_AUTO = "auto" as const;
 
-export function isUiLanguagePref(value: unknown): value is UiLanguagePref {
+function isUiLanguagePref(value: unknown): value is UiLanguagePref {
   return value === UI_LANGUAGE_AUTO || isLocale(value);
 }
 
