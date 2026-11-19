@@ -359,6 +359,16 @@ function FieldControl({
       </select>
     );
   }
+  if (field.kind === "string" && !field.multiline) {
+    return (
+      <input
+        type="text"
+        className={inputClass}
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
   if (field.kind === "string") {
     return (
       <textarea
@@ -836,9 +846,10 @@ export const DshConsole = memo(function DshConsole({
   const pendingPermission = sessionId
     ? permissions.find((p) => p.sessionId === sessionId)
     : undefined;
-  const pendingElicitation = sessionId
-    ? elicitations.find((e) => e.sessionId === sessionId)
-    : undefined;
+  // Request-scoped elicitations carry no session id; show them in any console.
+  const pendingElicitation = elicitations.find(
+    (e) => e.sessionId === null || e.sessionId === sessionId,
+  );
 
   const lastAssistant = useMemo(() => {
     if (!session) return null;
