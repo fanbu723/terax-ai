@@ -1,9 +1,10 @@
+import { t } from "@/i18n";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { appConfigDir, join } from "@tauri-apps/api/path";
 import type { Theme } from "./types";
-import { validateTheme, type ValidationResult } from "./validateTheme";
+import { type ValidationResult, validateTheme } from "./validateTheme";
 
 const THEME_FILE_EXT = ".terax-theme";
 const THEME_EDIT_EVENT = "terax://theme-edit";
@@ -69,8 +70,8 @@ export function starterTheme(): Theme {
   const id = `my-theme-${crypto.randomUUID().slice(0, 8)}`;
   return {
     id,
-    name: "My Theme",
-    description: "Custom theme.",
+    name: t("My Theme"),
+    description: t("Custom theme."),
     variants: {
       dark: {
         colors: {

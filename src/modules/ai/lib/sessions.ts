@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { UIMessage } from "@ai-sdk/react";
 import { invoke } from "@tauri-apps/api/core";
 import { LazyStore } from "@tauri-apps/plugin-store";
@@ -119,9 +120,14 @@ function migrateMessages(): Promise<void> {
       console.warn("Could not finalize the chat history migration:", error);
     }
     if (failed.length > 0) {
-      toast.warning("Some chat history could not be migrated", {
+      toast.warning(t("Some chat history could not be migrated"), {
         id: "conversation-migration",
-        description: `${failed.length} conversation${failed.length === 1 ? "" : "s"} will be retried next launch.`,
+        description:
+          failed.length === 1
+            ? t("1 conversation will be retried next launch.")
+            : t("{count} conversations will be retried next launch.", {
+                count: failed.length,
+              }),
       });
     }
   })().catch((error) => {
@@ -161,12 +167,12 @@ async function execute(id: string, op: WriteOp): Promise<void> {
 
 function reportFailure(id: string, error: unknown) {
   notices.add(id);
-  toast.error("Could not save conversation", {
+  toast.error(t("Could not save conversation"), {
     id: `conversation-save:${id}`,
     duration: Number.POSITIVE_INFINITY,
     description: String(error),
     action: {
-      label: "Retry",
+      label: t("Retry"),
       onClick: () => {
         const latest = failedWrites.get(id);
         if (latest && !pendingWrites.has(id)) {
@@ -241,9 +247,9 @@ export async function loadMessages(id: string): Promise<UIMessage[] | null> {
     });
   } catch (error) {
     if (!String(error).includes("corrupt:")) throw error;
-    toast.error("A conversation file was damaged", {
+    toast.error(t("A conversation file was damaged"), {
       id: `conversation-damaged:${id}`,
-      description: "It was set aside and the conversation starts empty.",
+      description: t("It was set aside and the conversation starts empty."),
     });
     return null;
   }

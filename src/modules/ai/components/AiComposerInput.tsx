@@ -1,7 +1,8 @@
 import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/useT";
 import { usePresence } from "@/lib/usePresence";
+import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceFiles } from "../hooks/useWorkspaceFiles";
 import { useComposer } from "../lib/composer";
@@ -10,7 +11,7 @@ import { useChatStore } from "../store/chatStore";
 import { useSnippetsStore } from "../store/snippetsStore";
 import { AgentSwitcher } from "./AgentSwitcher";
 import { FilePickerContent } from "./FilePicker";
-import { SnippetPickerContent, type PickerItem } from "./SnippetPicker";
+import { type PickerItem, SnippetPickerContent } from "./SnippetPicker";
 
 type SnippetTrigger = {
   start: number;
@@ -59,6 +60,7 @@ function detectFileTrigger(value: string, caret: number): FileTrigger | null {
 }
 
 export function AiComposerInput() {
+  const t = useT();
   const c = useComposer();
   const snippets = useSnippetsStore((s) => s.snippets);
   const workspaceRoot = useChatStore((s) => s.live.getWorkspaceRoot());
@@ -75,8 +77,8 @@ export function AiComposerInput() {
       return;
     }
     const q = fileTrigger.query;
-    const t = window.setTimeout(() => setFileQuery(q), 50);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setFileQuery(q), 50);
+    return () => window.clearTimeout(timer);
   }, [fileTrigger]);
 
   useEffect(() => {
@@ -197,9 +199,9 @@ export function AiComposerInput() {
   };
 
   const voiceLabel = c.voice.recording
-    ? "Listening…"
+    ? t("Listening…")
     : c.voice.transcribing
-      ? "Transcribing…"
+      ? t("Transcribing…")
       : null;
   const voiceRow = usePresence(Boolean(voiceLabel), 180);
   const lastVoiceLabel = useRef("");
@@ -257,7 +259,9 @@ export function AiComposerInput() {
                   c.submit();
                 }
               }}
-              placeholder="Ask Terax anything   -   # for snippets and commands, @ for files"
+              placeholder={t(
+                "Ask Terax anything   -   # for snippets and commands, @ for files",
+              )}
               rows={1}
               className={cn(
                 "max-h-40 flex-1 resize-none bg-transparent text-[13px] leading-relaxed outline-none",

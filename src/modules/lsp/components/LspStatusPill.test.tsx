@@ -11,6 +11,10 @@ vi.mock("../lib/sessionManager", () => ({
   restartPresetSessions: state.restart,
 }));
 vi.mock("sonner", () => ({ toast: { error: state.error } }));
+vi.mock("@/i18n/useT", async () => {
+  const { t } = await import("@/i18n");
+  return { useT: () => t, useLocale: () => "en" };
+});
 vi.mock("react/compiler-runtime", () => ({
   c: (n: number) => Array(n).fill(Symbol.for("react.memo_cache_sentinel")),
 }));

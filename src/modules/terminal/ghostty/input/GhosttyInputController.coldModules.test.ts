@@ -117,7 +117,9 @@ describe("GhosttyInputController cold modules", () => {
   it("keeps the IME anchor when the mouse module never loads", async () => {
     const { controller, composeLeft } = await controllerWith({ mouse: 2 });
     await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
-    expect(composeLeft()).toBe("30px");
+    // The anchor belongs to the IME module, whose load may land after the
+    // mouse warning; wait for it instead of racing the module graph.
+    await vi.waitFor(() => expect(composeLeft()).toBe("30px"));
     controller.dispose();
   });
 

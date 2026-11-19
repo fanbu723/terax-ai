@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import {
   FORMATTER_LABELS,
@@ -148,7 +149,10 @@ export function EditorSection() {
         )}
         <SettingRow
           title={t("Format on save")}
-          description={`Format the file on explicit save (${saveHint} / :w) with the formatter below.`}
+          description={t(
+            "Format the file on explicit save ({hint} / :w) with the formatter below.",
+            { hint: saveHint },
+          )}
         >
           <Switch
             checked={editorFormatOnSave}
@@ -192,6 +196,7 @@ function FormatterSelect({
   value: EditorFormatter;
   onChange: (v: EditorFormatter) => void;
 }) {
+  const t = useT();
   return (
     <Select value={value} onValueChange={(v) => onChange(v as EditorFormatter)}>
       <SelectTrigger className="h-8 w-40 text-[12px]">
@@ -200,12 +205,22 @@ function FormatterSelect({
       <SelectContent>
         {FORMATTER_OPTIONS.map((id) => (
           <SelectItem key={id} value={id}>
-            {FORMATTER_LABELS[id]}
+            {formatterLabel(id, t)}
           </SelectItem>
         ))}
       </SelectContent>
     </Select>
   );
+}
+
+/**
+ * Formatter labels are data, but two of them are copy rather than brand names.
+ * Map those explicitly so the dictionary check can see the literals.
+ */
+function formatterLabel(id: EditorFormatter, t: TFunction): string {
+  if (id === "lsp") return t("Language server");
+  if (id === "custom") return t("Custom command");
+  return FORMATTER_LABELS[id];
 }
 
 function CustomFormatCommandInput() {
@@ -266,7 +281,7 @@ function FormatterOverrides() {
             if (first) update({ ...byLang, [first.ext]: "lsp" });
           }}
         >
-          Add override
+          {t("Add override")}
         </button>
       </SettingRow>
       {entries.map(([lang, formatter]) => (

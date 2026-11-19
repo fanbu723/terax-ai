@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveFontFamily } from "./fonts";
+import {
+  DEFAULT_UI_FONT_STACK,
+  resolveFontFamily,
+  resolveUiFontFamily,
+} from "./fonts";
 
 const FALLBACK =
   '"JetBrains Mono", "Symbols Nerd Font Mono", "Symbols Nerd Font", "Terax Terminal Symbols", "Terax Terminal Symbols MDI", SFMono-Regular, Menlo, monospace';
@@ -243,5 +247,44 @@ describe("resolveFontFamily", () => {
     );
     expect(chain.indexOf("SFMono-Regular")).toBeGreaterThan(symbols);
     expect(chain.endsWith("monospace")).toBe(true);
+  });
+});
+
+describe("Maple Mono NF CN preference", () => {
+  it("prefers Maple over another installed Nerd Font", async () => {
+    measuringCanvas(
+      new Map([
+        ["Maple Mono NF CN", 0],
+        ["Hack Nerd Font", 4],
+      ]),
+    );
+    const { detectMonoFontFamily } = await import("./fonts");
+    expect(detectMonoFontFamily()).toBe(`"Maple Mono NF CN", ${FALLBACK}`);
+  });
+});
+
+describe("resolveUiFontFamily", () => {
+  it("uses the Maple-first stack for the automatic setting", () => {
+    expect(resolveUiFontFamily("")).toBe(DEFAULT_UI_FONT_STACK);
+    expect(DEFAULT_UI_FONT_STACK).toContain('"Maple Mono NF CN"');
+    expect(DEFAULT_UI_FONT_STACK).toContain('"Inter Variable"');
+  });
+
+  it("quotes a custom family and keeps Inter as the fallback", () => {
+    expect(resolveUiFontFamily("Example UI")).toBe(
+      '"Example UI", "Inter Variable", sans-serif',
+    );
+  });
+
+  it("passes a comma-separated stack through", () => {
+    expect(resolveUiFontFamily("A, B")).toBe(
+      'A, B, "Inter Variable", sans-serif',
+    );
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(resolveUiFontFamily("  Maple Mono NF CN  ")).toBe(
+      '"Maple Mono NF CN", "Inter Variable", sans-serif',
+    );
   });
 });

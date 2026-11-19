@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { quoteShellArg } from "@/lib/shellQuote";
 import type { EditorFormatter } from "@/modules/settings/store";
 import { currentWorkspaceEnv } from "@/modules/workspace";
@@ -123,7 +124,7 @@ export async function runExternalFormatter(
 ): Promise<string | null> {
   const command = buildCommand(formatter, path, customTemplate);
   if (!command) {
-    return "No custom format command configured in Settings.";
+    return t("No custom format command configured in Settings.");
   }
   try {
     const out = await invoke<CommandOutput>("shell_run_command", {
@@ -132,9 +133,11 @@ export async function runExternalFormatter(
       timeoutSecs: 20,
       workspace: currentWorkspaceEnv(),
     });
-    if (out.timed_out) return `${formatter} timed out`;
+    if (out.timed_out) return t("{formatter} timed out", { formatter });
     if (out.exit_code !== 0) {
-      return out.stderr.trim().slice(-300) || `${formatter} failed`;
+      return (
+        out.stderr.trim().slice(-300) || t("{formatter} failed", { formatter })
+      );
     }
     return null;
   } catch (e) {

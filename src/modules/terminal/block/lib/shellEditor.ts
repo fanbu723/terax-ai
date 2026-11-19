@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import "@/modules/terminal/block/block.css";
 
 import { unescapeForShell } from "@/lib/shellQuote";
@@ -35,7 +36,7 @@ import {
   rectangularSelection,
   tooltips,
 } from "@codemirror/view";
-import { tags as t } from "@lezer/highlight";
+import { tags } from "@lezer/highlight";
 import { completionIcon } from "./completionIcons";
 import { historyOpen, historyPopover } from "./historyPopover";
 import { inlineSuggestion } from "./inlineSuggest";
@@ -69,7 +70,7 @@ export type ShellEditorOptions = {
 
 /** The empty-input hint; `hint` is the shortcut that switches to the AI input. */
 export const shellPlaceholder = (hint: string) =>
-  `Run a command  -  ↑ history  ${hint} switch to AI`;
+  t("Run a command  -  ↑ history  {hint} switch to AI", { hint });
 
 export type ShellEditorHandle = {
   readonly view: EditorView;
@@ -288,14 +289,14 @@ function highlightStyle(): HighlightStyle {
   const c = buildTerminalTheme();
   const fg = c.foreground ?? "inherit";
   return HighlightStyle.define([
-    { tag: t.keyword, color: c.magenta ?? fg },
-    { tag: t.string, color: c.green ?? fg },
-    { tag: t.comment, color: c.brightBlack ?? fg, fontStyle: "italic" },
-    { tag: [t.number, t.bool, t.atom], color: c.yellow ?? fg },
-    { tag: t.standard(t.variableName), color: c.cyan ?? fg },
-    { tag: t.special(t.variableName), color: c.blue ?? fg },
-    { tag: t.variableName, color: fg },
-    { tag: t.operator, color: c.brightBlack ?? fg },
+    { tag: tags.keyword, color: c.magenta ?? fg },
+    { tag: tags.string, color: c.green ?? fg },
+    { tag: tags.comment, color: c.brightBlack ?? fg, fontStyle: "italic" },
+    { tag: [tags.number, tags.bool, tags.atom], color: c.yellow ?? fg },
+    { tag: tags.standard(tags.variableName), color: c.cyan ?? fg },
+    { tag: tags.special(tags.variableName), color: c.blue ?? fg },
+    { tag: tags.variableName, color: fg },
+    { tag: tags.operator, color: c.brightBlack ?? fg },
   ]);
 }
 
@@ -434,7 +435,9 @@ export function createShellEditor(opts: ShellEditorOptions): ShellEditorHandle {
       completionNav,
       ...(opts.suggest ? inlineSuggestion(opts.suggest) : []),
       ...(opts.historyList ? historyPopover(opts.historyList) : []),
-      placeholderComp.of(placeholder(opts.placeholderText ?? "Run a command")),
+      placeholderComp.of(
+        placeholder(opts.placeholderText ?? t("Run a command")),
+      ),
       ...(opts.onChange
         ? [
             EditorView.updateListener.of((u) => {

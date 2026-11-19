@@ -1,14 +1,9 @@
 import { MarkdownCode } from "@/components/ai-elements/markdown-code";
-import { checkReadable } from "@/modules/ai/lib/security";
-import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/useT";
 import { useAssetGrant } from "@/lib/useAssetGrant";
-import {
-  memo,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { cn } from "@/lib/utils";
+import { checkReadable } from "@/modules/ai/lib/security";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { previewBoundary, rehypeLocalImages } from "./lib/assetPath";
 import { MarkdownLink } from "./MarkdownLink";
@@ -31,6 +26,7 @@ export function MarkdownPreviewPane({
   visible,
   onSetView,
 }: Props) {
+  const t = useT();
   const status = useMarkdownDocument(path, visible);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollTopRef = useRef(0);
@@ -67,21 +63,26 @@ export function MarkdownPreviewPane({
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-auto">
         <div className="px-8 py-6">
           {status.kind === "loading" && (
-            <p className="text-[12px] text-muted-foreground">Loading…</p>
+            <p className="text-[12px] text-muted-foreground">{t("Loading…")}</p>
           )}
           {status.kind === "error" && (
             <p className="text-[12px] text-destructive">
-              Failed to read file: {status.message}
+              {t("Failed to read file: {message}", {
+                message: status.message,
+              })}
             </p>
           )}
           {status.kind === "binary" && (
             <p className="text-[12px] text-muted-foreground">
-              Binary file — cannot render as markdown.
+              {t("Binary file — cannot render as markdown.")}
             </p>
           )}
           {status.kind === "toolarge" && (
             <p className="text-[12px] text-muted-foreground">
-              File is {status.size} bytes; limit {status.limit}.
+              {t("File is {size} bytes; limit {limit}.", {
+                size: status.size,
+                limit: status.limit,
+              })}
             </p>
           )}
           {content !== null && (
@@ -106,7 +107,12 @@ const MarkdownBody = memo(function MarkdownBody({
   boundary: string;
   content: string;
 }) {
-  const { urlFor: assetUrlFor, error: assetError, retry } = useAssetGrant(boundary);
+  const t = useT();
+  const {
+    urlFor: assetUrlFor,
+    error: assetError,
+    retry,
+  } = useAssetGrant(boundary);
   const rehypePlugins = useMemo(() => {
     const d = defaultRehypePlugins;
     return [
@@ -122,16 +128,25 @@ const MarkdownBody = memo(function MarkdownBody({
 
   return (
     <>
-    {assetError && <div className="mb-3 text-xs text-muted-foreground"><p role="alert">Local images unavailable: {assetError}</p><button type="button" className="underline" onClick={retry}>Retry images</button></div>}
-    <Streamdown
-      className="select-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-      components={components}
-      rehypePlugins={rehypePlugins}
-      mode="static"
-      parseIncompleteMarkdown={false}
-    >
-      {content}
-    </Streamdown>
+      {assetError && (
+        <div className="mb-3 text-xs text-muted-foreground">
+          <p role="alert">
+            {t("Local images unavailable: {error}", { error: assetError })}
+          </p>
+          <button type="button" className="underline" onClick={retry}>
+            {t("Retry images")}
+          </button>
+        </div>
+      )}
+      <Streamdown
+        className="select-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+        components={components}
+        rehypePlugins={rehypePlugins}
+        mode="static"
+        parseIncompleteMarkdown={false}
+      >
+        {content}
+      </Streamdown>
     </>
   );
 });

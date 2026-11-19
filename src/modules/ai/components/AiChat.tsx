@@ -4,17 +4,13 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
+import { MarkdownCode } from "@/components/ai-elements/markdown-code";
 import {
   Message,
   MessageContent,
   MessageResponse,
   type MessageResponseProps,
 } from "@/components/ai-elements/message";
-import { MarkdownCode } from "@/components/ai-elements/markdown-code";
-import {
-  MarkdownLink,
-  type MarkdownLinkProps,
-} from "@/modules/markdown/MarkdownLink";
 import {
   Reasoning,
   ReasoningContent,
@@ -26,8 +22,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Spinner } from "@/components/ui/spinner";
+import type { TFunction } from "@/i18n";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
-import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  MarkdownLink,
+  type MarkdownLinkProps,
+} from "@/modules/markdown/MarkdownLink";
 import {
   ArrowRight01Icon,
   CodeIcon,
@@ -35,10 +37,7 @@ import {
   HashtagIcon,
   TerminalIcon,
 } from "@hugeicons/core-free-icons";
-import { SLASH_COMMANDS, TERAX_CMD_RE } from "../lib/slashCommands";
-import { Spinner } from "@/components/ui/spinner";
-import { useChatStore } from "../store/chatStore";
-import { sendMessage } from "../store/chatRuntime";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type {
   ChatStatus,
   DynamicToolUIPart,
@@ -47,10 +46,18 @@ import type {
   UIMessagePart,
 } from "ai";
 import { memo, useCallback, useMemo } from "react";
+import {
+  SLASH_COMMANDS,
+  slashCommandLabel,
+  TERAX_CMD_RE,
+} from "../lib/slashCommands";
+import { sendMessage } from "../store/chatRuntime";
+import { useChatStore } from "../store/chatStore";
 import { AiToolApproval } from "./AiToolApproval";
 import { estimateMessageHeight } from "./messageHeightEstimate";
 
 function CommandSnippet({ name }: { name: string }) {
+  const t = useT();
   const meta = SLASH_COMMANDS[name];
   if (!meta) {
     return (
@@ -71,7 +78,7 @@ function CommandSnippet({ name }: { name: string }) {
         {meta.invocation}
       </span>
       <span className="truncate text-[11px] text-muted-foreground">
-        {meta.label}
+        {slashCommandLabel(name, t)}
       </span>
     </div>
   );
@@ -86,8 +93,7 @@ type ContextChip =
 
 const SELECTION_RE =
   /<selection\s+source="(terminal|editor)">\n?([\s\S]*?)\n?<\/selection>/g;
-const FILE_RE =
-  /<file\s+name="([^"]+)"[^>]*>\n?([\s\S]*?)\n?<\/file>/g;
+const FILE_RE = /<file\s+name="([^"]+)"[^>]*>\n?([\s\S]*?)\n?<\/file>/g;
 const SNIPPET_RE = /<snippet\s+name="([^"]+)">\n?[\s\S]*?\n?<\/snippet>/g;
 
 function countLines(s: string): number {
@@ -127,6 +133,7 @@ const ContextChips = memo(function ContextChips({
 }: {
   chips: ContextChip[];
 }) {
+  const t = useT();
   return (
     <div className="mb-1 flex flex-wrap gap-1">
       {chips.map((c, i) => (
@@ -135,7 +142,7 @@ const ContextChips = memo(function ContextChips({
           className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-card/60 px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
         >
           {chipIcon(c)}
-          <span className="font-medium text-foreground">{chipLabel(c)}</span>
+          <span className="font-medium text-foreground">{chipLabel(c, t)}</span>
           {"lines" in c && c.lines > 0 ? (
             <span className="opacity-70">· {c.lines}L</span>
           ) : null}
@@ -161,9 +168,11 @@ function chipIcon(c: ContextChip) {
   return <HugeiconsIcon icon={HashtagIcon} size={10} strokeWidth={1.75} />;
 }
 
-function chipLabel(c: ContextChip): string {
+function chipLabel(c: ContextChip, t: TFunction): string {
   if (c.kind === "selection") {
-    return c.source === "editor" ? "Editor selection" : "Terminal selection";
+    return c.source === "editor"
+      ? t("Editor selection")
+      : t("Terminal selection");
   }
   if (c.kind === "file") return c.name;
   return `#${c.name}`;
@@ -192,6 +201,7 @@ export function AiChatView({
   clearError,
   addToolApprovalResponse,
 }: Props) {
+  const t = useT();
   const isBusy = status === "submitted" || status === "streaming";
   const lastMessage = messages[messages.length - 1];
   const showSpinner = isBusy && lastMessage?.role === "user";
@@ -207,7 +217,8 @@ export function AiChatView({
     !isBusy && hitStepCap && lastMessage?.role === "assistant";
 
   const onApproval = useCallback(
-    (id: string, approved: boolean) => addToolApprovalResponse({ id, approved }),
+    (id: string, approved: boolean) =>
+      addToolApprovalResponse({ id, approved }),
     [addToolApprovalResponse],
   );
 
@@ -216,8 +227,10 @@ export function AiChatView({
       <Conversation>
         <ConversationContent>
           <ConversationEmptyState
-            title="Ask Terax anything"
-            description="Explain command output, fix errors, generate snippets, or run a task."
+            title={t("Ask Terax anything")}
+            description={t(
+              "Explain command output, fix errors, generate snippets, or run a task.",
+            )}
           />
         </ConversationContent>
       </Conversation>
@@ -245,7 +258,7 @@ export function AiChatView({
         {showSpinner && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Spinner />
-            <span className="truncate">{step ?? "Thinking…"}</span>
+            <span className="truncate">{step ?? t("Thinking…")}</span>
           </div>
         )}
         {showContinue && (
@@ -260,7 +273,7 @@ export function AiChatView({
         )}
         {error && (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <div className="font-medium">Request failed.</div>
+            <div className="font-medium">{t("Request failed.")}</div>
             <div className="mt-0.5 leading-relaxed opacity-90">
               {error.message}
             </div>
@@ -269,7 +282,7 @@ export function AiChatView({
               onClick={clearError}
               className="mt-1 underline opacity-80 hover:opacity-100"
             >
-              Dismiss
+              {t("Dismiss")}
             </button>
           </div>
         )}
@@ -286,19 +299,24 @@ const CompactionNotice = memo(function CompactionNotice({
   droppedCount: number;
   onDismiss: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
       <span className="size-1.5 shrink-0 rounded-full bg-amber-500/80" />
       <span className="flex-1 truncate">
-        Context compacted — {droppedCount} older tool result
-        {droppedCount === 1 ? "" : "s"} elided to save tokens.
+        {droppedCount === 1
+          ? t("Context compacted — 1 older tool result elided to save tokens.")
+          : t(
+              "Context compacted — {count} older tool results elided to save tokens.",
+              { count: droppedCount },
+            )}
       </span>
       <button
         type="button"
         onClick={onDismiss}
         className="text-[10.5px] underline opacity-70 hover:opacity-100"
       >
-        Dismiss
+        {t("Dismiss")}
       </button>
     </div>
   );
@@ -309,17 +327,18 @@ const ContinueRow = memo(function ContinueRow({
 }: {
   onContinue: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 rounded-md border border-border/50 bg-card/60 px-2.5 py-1.5 text-[11px]">
       <span className="flex-1 text-muted-foreground">
-        Hit the step limit. Continue to keep going.
+        {t("Hit the step limit. Continue to keep going.")}
       </span>
       <button
         type="button"
         onClick={onContinue}
         className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
       >
-        Continue
+        {t("Continue")}
       </button>
     </div>
   );
@@ -363,9 +382,10 @@ const RenderedMessage = memo(function RenderedMessage({
   }
   // Hooks must run unconditionally (Rules of Hooks) even though user messages
   // render without groups; grouping is cheap so this stays out of the way.
-  const groups = useMemo(() => buildPartGroups(message.parts as AnyPart[]), [
-    message.parts,
-  ]);
+  const groups = useMemo(
+    () => buildPartGroups(message.parts as AnyPart[]),
+    [message.parts],
+  );
 
   if (message.role === "user") {
     const rawText = message.parts
@@ -500,6 +520,7 @@ function basename(p: string): string {
 }
 
 const ReadGroup = memo(function ReadGroup({ parts }: { parts: AnyPart[] }) {
+  const t = useT();
   const paths = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
@@ -539,9 +560,11 @@ const ReadGroup = memo(function ReadGroup({ parts }: { parts: AnyPart[] }) {
           strokeWidth={1.75}
           className="shrink-0 text-muted-foreground"
         />
-        <span className="shrink-0 font-medium text-foreground">Read</span>
+        <span className="shrink-0 font-medium text-foreground">
+          {t("Read")}
+        </span>
         <span className="shrink-0 text-[11px] text-muted-foreground">
-          {count} file{count === 1 ? "" : "s"}
+          {count === 1 ? t("1 file") : t("{count} files", { count })}
         </span>
         {paths.length > 0 ? (
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/80 group-data-[state=open]/read:invisible">
@@ -562,9 +585,7 @@ const ReadGroup = memo(function ReadGroup({ parts }: { parts: AnyPart[] }) {
                 strokeWidth={1.75}
                 className="shrink-0 opacity-60"
               />
-              <span className="truncate text-foreground">
-                {basename(path)}
-              </span>
+              <span className="truncate text-foreground">{basename(path)}</span>
               <span className="truncate opacity-60">{path}</span>
             </li>
           ))}
@@ -587,6 +608,7 @@ const PartAppear = memo(function PartAppear({
 });
 
 const ReadRow = memo(function ReadRow({ part }: { part: AnyPart }) {
+  const t = useT();
   const path = readPathFromPart(part);
   const state = (part as { state?: string }).state ?? "";
   const isError = state === "output-error";
@@ -606,7 +628,7 @@ const ReadRow = memo(function ReadRow({ part }: { part: AnyPart }) {
         strokeWidth={1.75}
         className="shrink-0 text-muted-foreground"
       />
-      <span className="shrink-0 font-medium text-foreground">Read</span>
+      <span className="shrink-0 font-medium text-foreground">{t("Read")}</span>
       <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
         {path ?? ""}
       </span>
@@ -622,12 +644,7 @@ const aiStreamdownComponents = {
 };
 
 function AiMessageResponse(props: Omit<MessageResponseProps, "components">) {
-  return (
-    <MessageResponse
-      {...props}
-      components={aiStreamdownComponents}
-    />
-  );
+  return <MessageResponse {...props} components={aiStreamdownComponents} />;
 }
 
 const RenderedPart = memo(function RenderedPart({

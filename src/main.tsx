@@ -6,6 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import ReactDOM from "react-dom/client";
 import App from "./app/App";
 import { bootI18n } from "./i18n/boot";
+import { applyAppFonts } from "./lib/appFonts";
 import { initLaunchDir } from "./lib/launchDir";
 import { USE_CUSTOM_WINDOW_CONTROLS } from "./lib/platform";
 
@@ -36,6 +37,10 @@ await initLaunchDir();
 // Load the UI language pack before mounting so the first frame is localized
 // instead of flashing English. Reads a localStorage mirror, so no IPC wait.
 await bootI18n();
+
+// Apply the automatic font stacks before the first paint; the preferences
+// store replaces them with a stored override once it hydrates.
+applyAppFonts();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <App />,

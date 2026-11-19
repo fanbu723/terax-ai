@@ -1,4 +1,8 @@
 const NERD_FONT_CANDIDATES = [
+  // Prefer the user's Maple Mono Nerd Font variants when installed; the plain
+  // CN variant has glyphs but no Nerd Font icons, so it is UI-only.
+  "Maple Mono NF CN",
+  "Maple Mono NF",
   "JetBrainsMono Nerd Font",
   "JetBrainsMono Nerd Font Mono",
   "JetBrainsMonoNL Nerd Font",
@@ -35,6 +39,14 @@ const EXTENDED_SYMBOLS_FAMILY = "Terax Terminal Symbols MDI";
  * Font Awesome, Codicons and Material Design icons without any installed font.
  */
 const FALLBACK_CHAIN = `"JetBrains Mono", "Symbols Nerd Font Mono", "Symbols Nerd Font", "${SYMBOLS_FAMILY}", "${EXTENDED_SYMBOLS_FAMILY}", SFMono-Regular, Menlo, monospace`;
+
+/**
+ * UI stack. The browser picks the first installed family, so an installed
+ * Maple variant is used for both Latin and Chinese without a JS detection
+ * pass; machines without Maple fall back to the bundled Inter and the system
+ * sans-serif for any remaining glyphs.
+ */
+export const DEFAULT_UI_FONT_STACK = `"Maple Mono NF CN", "Maple Mono NF", "Maple Mono CN", "Inter Variable", sans-serif`;
 
 const PROBE_SAMPLES = ["mmmmmmmmmmlli", "Wim0123\ue0a0\ue718\u{f024b}"];
 const PROBE_BASELINES = ["monospace", "serif", "sans-serif"];
@@ -112,6 +124,19 @@ export function resolveFontFamily(userInput: string): string {
   // Strip any quotes first so a stray quote can't produce a malformed token.
   const head = name.includes(",") ? name : quoteFamily(name);
   return `${head}, ${FALLBACK_CHAIN}`;
+}
+
+/**
+ * Interface font stack. An empty preference means "auto": the fixed stack puts
+ * the Maple variants before the bundled Inter, and the browser's own font
+ * matching picks whichever is installed. A custom single family is quoted and
+ * still falls back to Inter.
+ */
+export function resolveUiFontFamily(userInput: string): string {
+  const name = userInput.trim();
+  if (!name) return DEFAULT_UI_FONT_STACK;
+  const head = name.includes(",") ? name : quoteFamily(name);
+  return `${head}, "Inter Variable", sans-serif`;
 }
 
 function quoteFamily(name: string): string {

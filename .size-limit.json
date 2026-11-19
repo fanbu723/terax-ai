@@ -15,7 +15,15 @@
     "path": [
       "dist/assets/*.js"
     ],
-    "limit": "1505 KB",
+    "limit": "1560 KB",
+    "gzip": true
+  },
+  {
+    "name": "zh-CN locale pack (lazy, loaded only for Chinese UI)",
+    "path": [
+      "dist/assets/zh-CN-*.js"
+    ],
+    "limit": "30 KB",
     "gzip": true
   },
   {

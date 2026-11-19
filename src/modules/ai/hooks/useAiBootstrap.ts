@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { t } from "@/i18n";
 import { firePendingReviewForSession } from "@/modules/agents/lib/review";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { onKeysChanged } from "@/modules/settings/store";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   getAllCustomEndpointKeys,
   getAllKeys,
@@ -113,7 +114,7 @@ export function useAiBootstrap(): {
 
   useEffect(() => {
     void hydrateSessions().catch((error: unknown) => {
-      toast.error("Could not load chat history", {
+      toast.error(t("Could not load chat history"), {
         id: "chat-history-load",
         description: String(error),
       });

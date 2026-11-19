@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { TerminalSearchController } from "@/modules/terminal/search/TerminalSearchController";
 import { useTheme } from "@/modules/theme";
@@ -13,11 +14,11 @@ import {
 } from "react";
 import type { TerminalBackendKind } from "./backend/contracts";
 import { terminalBackendFor } from "./backend/selection";
-import {
-  useGhosttyTerminalSession,
-  ghosttyBlockGeometry,
-} from "./ghostty/useGhosttyTerminalSession";
 import { ghosttyBlocks } from "./ghostty/ghosttyBlockSessions";
+import {
+  ghosttyBlockGeometry,
+  useGhosttyTerminalSession,
+} from "./ghostty/useGhosttyTerminalSession";
 
 export type TerminalPaneHandle = {
   write: (data: string) => void;
@@ -68,6 +69,7 @@ const GhosttyTerminalPane = memo(
     },
     ref,
   ) {
+    const t = useT();
     const screenReader = usePreferencesStore(
       (state) => state.terminalScreenReader,
     );
@@ -183,16 +185,17 @@ const GhosttyTerminalPane = memo(
           >
             <strong>
               {session.error.kind === "renderer"
-                ? "Unable to display terminal"
-                : "Unable to start terminal"}
+                ? t("Unable to display terminal")
+                : t("Unable to start terminal")}
             </strong>
             <p className="max-w-md break-words text-muted-foreground">
               {session.error.message}
             </p>
             {session.error.kind === "renderer" && (
               <p className="text-muted-foreground">
-                Your terminal session is preserved. Retry to restore its
-                display.
+                {t(
+                  "Your terminal session is preserved. Retry to restore its display.",
+                )}
               </p>
             )}
             <button
@@ -200,7 +203,9 @@ const GhosttyTerminalPane = memo(
               className="rounded-md border px-3 py-1.5 hover:bg-accent focus-visible:outline-2"
               onClick={session.retry}
             >
-              {session.error.kind === "renderer" ? "Retry display" : "Retry"}
+              {session.error.kind === "renderer"
+                ? t("Retry display")
+                : t("Retry")}
             </button>
           </div>
         )}

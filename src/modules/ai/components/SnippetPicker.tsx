@@ -1,7 +1,8 @@
 import { PopoverContent } from "@/components/ui/popover";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
-import type { SlashCommandMeta } from "../lib/slashCommands";
+import { type SlashCommandMeta, slashCommandLabel } from "../lib/slashCommands";
 import type { Snippet } from "../lib/snippets";
 
 export type PickerItem =
@@ -21,6 +22,7 @@ export function SnippetPickerContent({
   onPick,
   onHover,
 }: Props) {
+  const t = useT();
   const commands = items.filter((it) => it.kind === "command");
   const snippets = items.filter((it) => it.kind === "snippet");
   let cursor = -1;
@@ -37,13 +39,13 @@ export function SnippetPickerContent({
     >
       {items.length === 0 ? (
         <div className="px-3 py-2.5 text-[11px] text-muted-foreground">
-          No matches. Add snippets in Settings → Agents.
+          {t("No matches. Add snippets in Settings → Agents.")}
         </div>
       ) : (
         <div className="max-h-64 overflow-y-auto py-1">
           {commands.length > 0 && (
             <>
-              <SectionHeader label="Pre-built snippets" />
+              <SectionHeader label={t("Pre-built snippets")} />
               <ul>
                 {commands.map((it) => {
                   cursor += 1;
@@ -74,7 +76,9 @@ export function SnippetPickerContent({
                             <span className="font-mono text-muted-foreground">
                               #{c.name}
                             </span>
-                            <span className="font-medium">{c.label}</span>
+                            <span className="font-medium">
+                              {slashCommandLabel(c.name, t)}
+                            </span>
                           </span>
                         </span>
                       </button>
@@ -86,7 +90,7 @@ export function SnippetPickerContent({
           )}
           {snippets.length > 0 && (
             <>
-              <SectionHeader label="Snippets" />
+              <SectionHeader label={t("Snippets")} />
               <ul>
                 {snippets.map((it) => {
                   cursor += 1;

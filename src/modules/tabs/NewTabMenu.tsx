@@ -10,6 +10,7 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@/components/ui/popover";
+import { useT } from "@/i18n/useT";
 import { AgentLauncherPanel } from "@/modules/agents/components/AgentLauncherPanel";
 import type { AgentLaunchRequest } from "@/modules/agents/lib/launcher";
 import { useShortcutHint } from "@/modules/shortcuts";
@@ -45,6 +46,7 @@ export function NewTabMenu({
   onNewGitGraph,
   onLaunchAgents,
 }: Props) {
+  const t = useT();
   const terminalHint = useShortcutHint("tab.new");
   const blockHint = useShortcutHint("tab.newBlock");
   const privateHint = useShortcutHint("tab.newPrivate");
@@ -82,7 +84,7 @@ export function NewTabMenu({
                 variant="ghost"
                 size="icon"
                 className="ml-1 size-6 shrink-0 rounded-full bg-foreground/[0.06] text-muted-foreground ring-1 ring-inset ring-foreground/[0.04] hover:bg-foreground/[0.12] hover:text-foreground"
-                title="New tab"
+                title={t("New tab")}
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={2} />
               </Button>
@@ -104,7 +106,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Terminal</span>
+                <span className="flex-1">{t("Terminal")}</span>
                 <span className="text-xs text-muted-foreground">
                   {terminalHint}
                 </span>
@@ -115,7 +117,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Blocks</span>
+                <span className="flex-1">{t("Blocks")}</span>
                 <span className="text-xs text-muted-foreground">
                   {blockHint}
                 </span>
@@ -126,7 +128,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Agents</span>
+                <span className="flex-1">{t("Agents")}</span>
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
                   size={14}
@@ -140,7 +142,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Privacy</span>
+                <span className="flex-1">{t("Privacy")}</span>
                 <span className="text-xs text-muted-foreground">
                   {privateHint}
                 </span>
@@ -151,7 +153,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Editor</span>
+                <span className="flex-1">{t("Editor")}</span>
                 <span className="text-xs text-muted-foreground">
                   {editorHint}
                 </span>
@@ -162,7 +164,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Preview</span>
+                <span className="flex-1">{t("Preview")}</span>
                 <span className="text-xs text-muted-foreground">
                   {previewHint}
                 </span>
@@ -173,7 +175,7 @@ export function NewTabMenu({
                   size={14}
                   strokeWidth={1.75}
                 />
-                <span className="flex-1">Git Graph</span>
+                <span className="flex-1">{t("Git Graph")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

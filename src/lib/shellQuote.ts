@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { IS_WINDOWS } from "./platform";
 
 /** Characters a POSIX shell treats as syntax when a path is pasted unquoted. */
@@ -107,7 +108,7 @@ export function quotePathArg(value: string, dialect: ShellDialect): string {
     return quoteShellArg(value, dialect === "powershell", true);
   if (/[%!"\r\n]/.test(value))
     throw new Error(
-      "This filename cannot be pasted literally into Command Prompt.",
+      t("This filename cannot be pasted literally into Command Prompt."),
     );
   return WINDOWS_UNQUOTED_SAFE.test(value) ? value : `"${value}"`;
 }

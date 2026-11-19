@@ -1,15 +1,16 @@
 import { homeRelativePath } from "@/lib/homeRelativePath";
 import "@/modules/terminal/block/block.css";
 
-import { writeTerminalClipboard } from "@/modules/terminal/lib/terminalClipboard";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/modules/ai/store/chatStore";
+import { writeTerminalClipboard } from "@/modules/terminal/lib/terminalClipboard";
 import {
   ArrowDown01Icon,
   ArrowUp01Icon,
@@ -218,6 +219,7 @@ function Meta({ block }: { block: PositionedBlock }) {
 }
 
 function StickyHeader({ block, all, onSearch }: ChromeProps) {
+  const t = useT();
   return (
     <div className="bt-sticky">
       <HugeiconsIcon
@@ -226,13 +228,14 @@ function StickyHeader({ block, all, onSearch }: ChromeProps) {
         size={12}
         strokeWidth={1.75}
       />
-      <span className="bt-sticky-cmd">{block.command || "command"}</span>
+      <span className="bt-sticky-cmd">{block.command || t("command")}</span>
       <Toolbar block={block} all={all} onSearch={onSearch} />
     </div>
   );
 }
 
 function Toolbar({ block, all, onSearch }: ChromeProps) {
+  const t = useT();
   const duration = block.running
     ? null
     : fmtDuration(block.finishedAt - block.startedAt);
@@ -244,7 +247,7 @@ function Toolbar({ block, all, onSearch }: ChromeProps) {
       {!block.running && block.canRerun && (
         <button
           type="button"
-          title="Run again"
+          title={t("Run again")}
           className="bt-btn"
           disabled={!all.promptReady}
           onClick={() => all.onRunAgain(block.command)}
@@ -258,6 +261,7 @@ function Toolbar({ block, all, onSearch }: ChromeProps) {
 }
 
 function BlockMenu({ block, all, onSearch }: ChromeProps) {
+  const t = useT();
   const output = () => all.readOutput(block.id) ?? "";
   const attach = () => {
     const out = capAttachOutput(output());
@@ -267,7 +271,7 @@ function BlockMenu({ block, all, onSearch }: ChromeProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" title="Block actions" className="bt-btn">
+        <button type="button" title={t("Block actions")} className="bt-btn">
           <HugeiconsIcon
             icon={MoreHorizontalIcon}
             size={14}
@@ -285,40 +289,40 @@ function BlockMenu({ block, all, onSearch }: ChromeProps) {
       >
         <MenuItem
           icon={Refresh01Icon}
-          label="Run again"
+          label={t("Run again")}
           disabled={block.running || !all.promptReady || !block.canRerun}
           onClick={() => all.onRunAgain(block.command)}
         />
         <MenuItem
           icon={Copy01Icon}
-          label="Copy command"
+          label={t("Copy command")}
           disabled={!block.command}
-          onClick={() => copy(block.command, "Command copied")}
+          onClick={() => copy(block.command, t("Command copied"))}
         />
         <MenuItem
           icon={ComputerTerminal02Icon}
-          label="Copy output"
+          label={t("Copy output")}
           onClick={() => {
             const o = output();
-            if (o) copy(o, "Output copied");
+            if (o) copy(o, t("Output copied"));
           }}
         />
         <MenuItem
           icon={Copy01Icon}
-          label="Copy command and output"
+          label={t("Copy command and output")}
           onClick={() => {
             const text = `$ ${block.command}\n${output()}`;
-            copy(text, "Block copied");
+            copy(text, t("Block copied"));
           }}
         />
         <MenuItem
           icon={SparklesIcon}
-          label="Attach to AI chat"
+          label={t("Attach to AI chat")}
           onClick={attach}
         />
         <MenuItem
           icon={Search01Icon}
-          label="Find in block"
+          label={t("Find in block")}
           onClick={() => onSearch(block.id)}
         />
       </DropdownMenuContent>
@@ -368,6 +372,7 @@ function SearchBar({
   revealMatch: (m: BlockMatch) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [matches, setMatches] = useState<BlockMatch[]>([]);
   const [idx, setIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -397,7 +402,7 @@ function SearchBar({
       () => {
         if (controller.signal.aborted) return;
         setPending(false);
-        toast.error("Could not search this block");
+        toast.error(t("Could not search this block"));
       },
     );
   };
@@ -414,7 +419,7 @@ function SearchBar({
       <input
         ref={inputRef}
         className="bt-search-input"
-        placeholder="Find in block"
+        placeholder={t("Find in block")}
         onChange={(e) => run(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -428,18 +433,22 @@ function SearchBar({
       />
       <span className="bt-search-count">
         {pending
-          ? "Searching"
+          ? t("Searching")
           : matches.length
             ? `${idx + 1}/${matches.length}`
             : "0"}
       </span>
       <SearchBtn
-        title="Previous"
+        title={t("Previous|block")}
         icon={ArrowUp01Icon}
         onClick={() => nav(-1)}
       />
-      <SearchBtn title="Next" icon={ArrowDown01Icon} onClick={() => nav(1)} />
-      <SearchBtn title="Close" icon={Cancel01Icon} onClick={onClose} />
+      <SearchBtn
+        title={t("Next")}
+        icon={ArrowDown01Icon}
+        onClick={() => nav(1)}
+      />
+      <SearchBtn title={t("Close")} icon={Cancel01Icon} onClick={onClose} />
     </div>
   );
 }

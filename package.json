@@ -33,6 +33,8 @@
     "size": "size-limit",
     "knip": "knip",
     "i18n:check": "node scripts/i18n-check.mjs",
+    "i18n:audit": "node scripts/i18n-audit.mjs --check",
+    "i18n:verify": "node scripts/i18n-check.mjs && node scripts/i18n-audit.mjs --check",
     "profile:renderer:macos": "python3 scripts/renderer-profile/run.py",
     "profile:renderer:occlusion": "python3 scripts/renderer-profile/run.py --workload occlusion",
     "profile:renderer:move": "python3 scripts/renderer-profile/run.py --workload move",

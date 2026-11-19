@@ -6,13 +6,17 @@ import {
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { t as translate } from "@/i18n";
+import { formatCompactDateTime, formatDateTime } from "@/i18n/format";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import { FileIcon } from "@/modules/explorer/FileIcon";
 import {
-  git,
   type GitCommitFileChange,
   type GitLogEntry,
+  git,
+  gitStatusLabel,
 } from "@/modules/git";
-import { FileIcon } from "@/modules/explorer/FileIcon";
 import {
   Copy01Icon,
   File02Icon,
@@ -23,21 +27,21 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   memo,
+  type ReactNode,
   useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { GraphRail, MAX_VISIBLE_LANES, railWidth } from "./GraphRail";
 import {
   EMPTY_GRAPH_STATE,
-  layoutGraph,
   type GraphRow,
   type GraphState,
+  layoutGraph,
 } from "./lib/graph";
 import {
   commitWebUrl,
@@ -102,18 +106,7 @@ function normalizeError(error: unknown): string {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string") return message;
   }
-  return "Unknown error";
-}
-
-function absoluteTime(secs: number): string {
-  if (!secs) return "";
-  return new Date(secs * 1000).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return translate("Unknown error");
 }
 
 function authorInitials(name: string): string {
@@ -141,21 +134,6 @@ function authorTint(key: string): string {
     hash = (hash * 31 + key.charCodeAt(i)) | 0;
   }
   return AUTHOR_TINTS[Math.abs(hash) % AUTHOR_TINTS.length];
-}
-
-function compactDate(secs: number): string {
-  if (!secs) return "";
-  const d = new Date(secs * 1000);
-  const now = new Date();
-  const sameYear = d.getFullYear() === now.getFullYear();
-  const month = d.toLocaleString(undefined, { month: "short" });
-  const day = String(d.getDate()).padStart(2, "0");
-  if (sameYear) {
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${month} ${day}  ${hh}:${mm}`;
-  }
-  return `${month} ${day} ${d.getFullYear()}`;
 }
 
 function statusTone(code: string): string {
@@ -194,6 +172,7 @@ export function GitHistoryPane({
   onOpenCommitFile,
   onSearchHandle,
 }: Props) {
+  const t = useT();
   const [commits, setCommits] = useState<GitLogEntry[]>([]);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -511,26 +490,26 @@ export function GitHistoryPane({
           <CenterPlaceholder>
             <Spinner className="size-4" />
             <span className="text-[11.5px] text-muted-foreground">
-              Loading commits…
+              {t("Loading commits…")}
             </span>
           </CenterPlaceholder>
         ) : loadStatus === "error" && commits.length === 0 ? (
           <CenterPlaceholder>
             <div className="text-[13px] font-medium">
-              Could not load history
+              {t("Could not load history")}
             </div>
             <div className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
-              {error ?? "Unknown error"}
+              {error ?? t("Unknown error")}
             </div>
             <Button size="sm" onClick={handleRefresh}>
-              Retry
+              {t("Retry")}
             </Button>
           </CenterPlaceholder>
         ) : commits.length === 0 ? (
           <CenterPlaceholder>
-            <div className="text-[13px] font-medium">No commits yet</div>
+            <div className="text-[13px] font-medium">{t("No commits yet")}</div>
             <div className="max-w-md text-[11px] leading-relaxed text-muted-foreground">
-              This branch has no commits.
+              {t("This branch has no commits.")}
             </div>
           </CenterPlaceholder>
         ) : (
@@ -543,12 +522,12 @@ export function GitHistoryPane({
               }}
             >
               <div />
-              <div className="pl-px">SHA</div>
-              <div className="min-w-0">Subject</div>
+              <div className="pl-px">{t("SHA")}</div>
+              <div className="min-w-0">{t("Subject")}</div>
               <div />
-              <div className="ml-2">Author</div>
-              <div className="text-right">Date</div>
-              <div className="text-right">Changes</div>
+              <div className="ml-2">{t("Author")}</div>
+              <div className="text-right">{t("Date")}</div>
+              <div className="text-right">{t("Changes")}</div>
             </div>
             <div
               ref={scrollRef}
@@ -594,24 +573,24 @@ export function GitHistoryPane({
               {loadStatus === "more" ? (
                 <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-muted-foreground">
                   <Spinner className="size-3" />
-                  Loading more…
+                  {t("Loading more…")}
                 </div>
               ) : null}
               {endReached && !activeSearch ? (
                 <div className="py-3 text-center text-[10.5px] text-muted-foreground/65">
-                  End of history
+                  {t("End of history")}
                 </div>
               ) : null}
               {loadStatus === "error" && commits.length > 0 ? (
                 <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-destructive">
-                  {error ?? "Failed to load more"}
+                  {error ?? t("Failed to load more")}
                   <Button
                     size="xs"
                     variant="ghost"
                     className="h-6 cursor-pointer text-[11px]"
                     onClick={() => void loadMore()}
                   >
-                    Retry
+                    {t("Retry")}
                   </Button>
                 </div>
               ) : null}
@@ -703,7 +682,8 @@ const CommitRow = memo(function CommitRow({
   gridTemplate,
   onClick,
 }: CommitRowProps) {
-  const date = compactDate(commit.timestampSecs);
+  const t = useT();
+  const date = formatCompactDateTime(commit.timestampSecs);
   const initials = authorInitials(commit.author);
   const totalStat = commit.insertions + commit.deletions;
   return (
@@ -740,7 +720,7 @@ const CommitRow = memo(function CommitRow({
         {commit.subject ? (
           highlight(commit.subject, query)
         ) : (
-          <span className="text-muted-foreground">(no subject)</span>
+          <span className="text-muted-foreground">{t("(no subject)")}</span>
         )}
       </span>
       <span aria-hidden />
@@ -757,7 +737,7 @@ const CommitRow = memo(function CommitRow({
           {initials}
         </span>
         <span className="min-w-0 truncate">
-          {commit.author ? highlight(commit.author, query) : "Unknown"}
+          {commit.author ? highlight(commit.author, query) : t("Unknown")}
         </span>
       </span>
       <span className="text-right font-mono text-[10.5px] tabular-nums text-muted-foreground/75">
@@ -767,7 +747,11 @@ const CommitRow = memo(function CommitRow({
         {commit.filesChanged > 0 ? (
           <span
             className="inline-flex items-center gap-1 text-muted-foreground/75"
-            title={`${commit.filesChanged} ${commit.filesChanged === 1 ? "file" : "files"} changed`}
+            title={
+              commit.filesChanged === 1
+                ? t("{count} file changed", { count: 1 })
+                : t("{count} files changed", { count: commit.filesChanged })
+            }
           >
             <HugeiconsIcon
               icon={File02Icon}
@@ -825,7 +809,8 @@ function CommitDetail({
   onOpenFile,
   onRetryFiles,
 }: CommitDetailProps) {
-  const absolute = absoluteTime(commit.timestampSecs);
+  const t = useT();
+  const absolute = formatDateTime(commit.timestampSecs);
   const webUrl = remoteWeb ? commitWebUrl(remoteWeb, commit.sha) : null;
   const [copied, setCopied] = useState(false);
 
@@ -844,12 +829,12 @@ function CommitDetail({
           </span>
           <div className="min-w-0 flex-1 text-[12.5px] font-semibold leading-snug text-foreground">
             {commit.subject || (
-              <span className="text-muted-foreground">(no subject)</span>
+              <span className="text-muted-foreground">{t("(no subject)")}</span>
             )}
           </div>
         </div>
         <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[10.5px] text-muted-foreground">
-          <span className="truncate">{commit.author || "Unknown"}</span>
+          <span className="truncate">{commit.author || t("Unknown")}</span>
           {commit.authorEmail ? (
             <>
               <span className="text-muted-foreground/45">·</span>
@@ -873,7 +858,7 @@ function CommitDetail({
             }}
           >
             <HugeiconsIcon icon={Copy01Icon} size={11} strokeWidth={1.9} />
-            {copied ? "Copied" : "Copy SHA"}
+            {copied ? t("Copied") : t("Copy SHA")}
           </Button>
           {webUrl ? (
             <Button
@@ -919,11 +904,12 @@ function CommitFiles({
   ) => Promise<void> | void;
   onRetry: () => void;
 }) {
+  const t = useT();
   if (!filesEntry || filesEntry.state === "loading") {
     return (
       <div className="flex items-center gap-2 px-3 py-3 text-[11px] text-muted-foreground">
         <Spinner className="size-3" />
-        Loading files…
+        {t("Loading files…")}
       </div>
     );
   }
@@ -937,7 +923,7 @@ function CommitFiles({
           className="h-6 cursor-pointer text-[11px]"
           onClick={onRetry}
         >
-          Retry
+          {t("Retry")}
         </Button>
       </div>
     );
@@ -945,14 +931,14 @@ function CommitFiles({
   if (filesEntry.files.length === 0) {
     return (
       <div className="px-3 py-3 text-[11px] text-muted-foreground">
-        No file changes.
+        {t("No file changes.")}
       </div>
     );
   }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center justify-between px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/85">
-        <span>Files</span>
+        <span>{t("Files")}</span>
         <span className="rounded-sm bg-muted/55 px-1 py-px text-[9.5px] tabular-nums text-muted-foreground/85 normal-case tracking-normal">
           {filesEntry.files.length}
         </span>
@@ -980,6 +966,7 @@ const FileRow = memo(function FileRow({
   file: GitCommitFileChange;
   onOpen: () => void;
 }) {
+  const t = useT();
   const fileName = basename(file.path);
   const dir = dirname(file.path);
   return (
@@ -1001,7 +988,7 @@ const FileRow = memo(function FileRow({
       </div>
       <div className="flex shrink-0 items-center gap-1 text-[10px] tabular-nums">
         {file.isBinary ? (
-          <span className="text-muted-foreground/70">binary</span>
+          <span className="text-muted-foreground/70">{t("binary")}</span>
         ) : (
           <>
             {file.added > 0 ? (
@@ -1022,7 +1009,7 @@ const FileRow = memo(function FileRow({
           "inline-flex w-4 shrink-0 justify-center text-[9.5px] font-bold leading-none tabular-nums",
           statusTone(file.status),
         )}
-        title={file.statusLabel}
+        title={gitStatusLabel(file.status, file.statusLabel)}
       >
         {file.status.toUpperCase()}
       </span>

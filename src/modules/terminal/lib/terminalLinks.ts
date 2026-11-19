@@ -1,9 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
-import { homeDir } from "@tauri-apps/api/path";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { hostname } from "@tauri-apps/plugin-os";
-import { toast } from "sonner";
+import { t } from "@/i18n";
 import { openExternalUrl } from "@/lib/external-link";
+import { getLspNavigator } from "@/modules/lsp/lib/navigator";
+import type { TerminalLinkHit } from "@/modules/terminal/ghostty/core/terminalLinks";
 import {
   isLocalFileHost,
   isNetworkOrDevicePath,
@@ -13,9 +11,12 @@ import {
   planLinkActivation,
   resolveLinkPath,
 } from "@/modules/terminal/ghostty/core/terminalLinkTargets";
-import type { TerminalLinkHit } from "@/modules/terminal/ghostty/core/terminalLinks";
-import { getLspNavigator } from "@/modules/lsp/lib/navigator";
 import { getWslHome, type WorkspaceEnv } from "@/modules/workspace";
+import { invoke } from "@tauri-apps/api/core";
+import { homeDir } from "@tauri-apps/api/path";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { hostname } from "@tauri-apps/plugin-os";
+import { toast } from "sonner";
 
 export type LinkActivationContext = {
   /** The pane's last reported working directory, canonical form. */
@@ -43,12 +44,18 @@ export type LinkActivationDeps = {
   }): void;
 };
 
-const CONFIRM_REASONS: Record<LinkConfirmReason, string> = {
-  userinfo: "This link carries a username or password.",
-  punycode: "This link uses an international domain name.",
-  mismatch: "The text shown for this link is not its address.",
-  scheme: "This opens another app.",
-};
+function confirmReason(reason: LinkConfirmReason): string {
+  switch (reason) {
+    case "userinfo":
+      return t("This link carries a username or password.");
+    case "punycode":
+      return t("This link uses an international domain name.");
+    case "mismatch":
+      return t("The text shown for this link is not its address.");
+    case "scheme":
+      return t("This opens another app.");
+  }
+}
 
 /** Cmd/Ctrl-click on a terminal link: open it, or say why it was not opened. */
 export async function activateTerminalLink(
@@ -77,8 +84,11 @@ async function runPlan(
       return;
     case "confirm-url":
       deps.confirm({
-        title: `Open ${plan.destination}?`,
-        description: `${CONFIRM_REASONS[plan.reason]} ${truncate(plan.url)}`,
+        title: t("Open {url}?", { url: plan.destination }),
+        description: t("{reason} {url}", {
+          reason: confirmReason(plan.reason),
+          url: truncate(plan.url),
+        }),
         onConfirm: () => {
           if (context.isCurrent()) void deps.openUrl(plan.url, context.focus);
         },
@@ -86,8 +96,10 @@ async function runPlan(
       return;
     case "block":
       deps.inform(
-        plan.scheme ? `Blocked ${plan.scheme}: link` : "Blocked link",
-        plan.reason === "length" ? "The address is too long." : undefined,
+        plan.scheme
+          ? t("Blocked {scheme}: link", { scheme: plan.scheme })
+          : t("Blocked link"),
+        plan.reason === "length" ? t("The address is too long.") : undefined,
       );
       return;
     case "file-uri": {
@@ -96,7 +108,7 @@ async function runPlan(
         plan.host ? await deps.hostname() : null,
       );
       if (!local) {
-        deps.inform("Remote file link ignored", plan.host);
+        deps.inform(t("Remote file link ignored"), plan.host);
         return;
       }
       await openLocalPath(
@@ -123,7 +135,7 @@ async function runPlan(
         context.isCurrent,
       );
       if (!opened && context.isCurrent())
-        deps.inform("File not found", truncate(plan.path));
+        deps.inform(t("File not found"), truncate(plan.path));
       return;
     }
   }
@@ -211,7 +223,7 @@ function defaultDeps(context: LinkActivationContext): LinkActivationDeps {
       toast(title, {
         description,
         duration: 15_000,
-        action: { label: "Open", onClick: onConfirm },
+        action: { label: t("Open"), onClick: onConfirm },
       }),
   };
 }

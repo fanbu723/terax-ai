@@ -1,21 +1,23 @@
-import {
-  git,
-  type GitChangedFile,
-  type GitDiscardEntry,
-  type GitRepoInfo,
-  type GitStatusSnapshot,
-} from "@/modules/git";
-import { useChatStore } from "@/modules/ai/store/chatStore";
+import { t } from "@/i18n";
+import { useLocale } from "@/i18n/useT";
 import {
   modelSupportsTemperature,
   providerNeedsKey,
   resolveModel,
 } from "@/modules/ai/config";
+import { useChatStore } from "@/modules/ai/store/chatStore";
 import {
   invalidateDiff,
   invalidateRepoDiffs,
   workingDiffKey,
 } from "@/modules/editor/lib/diffCache";
+import {
+  type GitChangedFile,
+  type GitDiscardEntry,
+  type GitRepoInfo,
+  type GitStatusSnapshot,
+  git,
+} from "@/modules/git";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SourceControlSummary } from "./useSourceControl";
@@ -120,7 +122,7 @@ function normalizeError(error: unknown): string {
     const message = (error as { message?: unknown }).message;
     if (typeof message === "string") return message;
   }
-  return "Unknown source control error";
+  return t("Unknown source control error");
 }
 
 function normalizeStatusCode(status: string): string {
@@ -262,7 +264,8 @@ function optimisticStage(
     if (!paths.has(file.path)) return file;
     if (file.staged && !file.unstaged) return file;
     changed = true;
-    const wt = file.worktreeStatus !== " " ? file.worktreeStatus : file.indexStatus;
+    const wt =
+      file.worktreeStatus !== " " ? file.worktreeStatus : file.indexStatus;
     return {
       ...file,
       indexStatus: wt,
@@ -292,7 +295,8 @@ function optimisticUnstage(
       continue;
     }
     changed = true;
-    const idx = file.indexStatus !== " " ? file.indexStatus : file.worktreeStatus;
+    const idx =
+      file.indexStatus !== " " ? file.indexStatus : file.worktreeStatus;
     if (idx === "R" && file.originalPath) {
       next.push({
         path: file.originalPath,
@@ -370,6 +374,7 @@ export function useSourceControlPanel(
       }) => void)
     | null,
 ): SourceControlPanelState {
+  const locale = useLocale();
   const selectedModelId = useChatStore((state) => state.selectedModelId);
   const agentStatus = useChatStore((state) => state.agentMeta.status);
   const hasApiKeyForSelected = useChatStore((state) => {
@@ -473,34 +478,36 @@ export function useSourceControlPanel(
   );
   const aiBusy = agentStatus !== "idle" && agentStatus !== "error";
   const anyActionBusy = localActionBusy !== null || summary.busyAction !== null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates the translated hint.
   const aiUnavailableReason = useMemo(() => {
     if (stagedEntries.length === 0) {
-      return "Stage changes to generate a commit message";
+      return t("Stage changes to generate a commit message");
     }
     if (!hasApiKeyForSelected) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     if (selectedModel.id === "lmstudio-local" && !lmstudioModelId.trim()) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     if (selectedModel.id === "mlx-local" && !mlxModelId.trim()) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     if (selectedModel.id === "ollama-local" && !ollamaModelId.trim()) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     if (
       selectedModel.id === "openai-compatible-custom" &&
       (!openaiCompatibleBaseURL.trim() || !openaiCompatibleModelId.trim())
     ) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     if (selectedModel.id === "openrouter-custom" && !openrouterModelId.trim()) {
-      return "Connect an AI provider to generate commit messages";
+      return t("Connect an AI provider to generate commit messages");
     }
     return null;
   }, [
     hasApiKeyForSelected,
+    locale,
     lmstudioModelId,
     mlxModelId,
     ollamaModelId,
@@ -515,23 +522,28 @@ export function useSourceControlPanel(
   const generateCommitMessageHint = aiUnavailableReason
     ? aiUnavailableReason
     : aiBusy
-      ? "Wait for the current AI action to finish"
-      : "Generate commit message";
+      ? t("Wait for the current AI action to finish")
+      : t("Generate commit message");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates the translated hint.
   const pushHint = useMemo(() => {
     if (!status) return null;
     if (!status.upstream) {
-      return "Configure or publish this branch in the terminal to enable push in this iteration.";
+      return t(
+        "Configure or publish this branch in the terminal to enable push in this iteration.",
+      );
     }
     if (status.behind > 0) {
-      return "Pull remote changes before pushing local commits.";
+      return t("Pull remote changes before pushing local commits.");
     }
     if (status.ahead === 0) {
-      return `No local commits to push to ${status.upstream}.`;
+      return t("No local commits to push to {upstream}.", {
+        upstream: status.upstream,
+      });
     }
-    return `Pushes to ${status.upstream}.`;
-  }, [status]);
-  const stagedEmptyText = "No staged changes";
-  const unstagedEmptyText = "No unstaged changes";
+    return t("Pushes to {upstream}.", { upstream: status.upstream });
+  }, [locale, status]);
+  const stagedEmptyText = t("No staged changes");
+  const unstagedEmptyText = t("No unstaged changes");
 
   const cancelReconcile = useCallback(() => {
     if (reconcileTimerRef.current) {
@@ -551,7 +563,11 @@ export function useSourceControlPanel(
   useEffect(() => () => cancelReconcile(), [cancelReconcile]);
 
   const openSelection = useCallback(
-    (sel: DiffSelection, repoRoot: string, file: GitChangedFile | undefined) => {
+    (
+      sel: DiffSelection,
+      repoRoot: string,
+      file: GitChangedFile | undefined,
+    ) => {
       onOpenDiff?.({
         path: sel.path,
         repoRoot,
@@ -649,7 +665,10 @@ export function useSourceControlPanel(
   const selectEntry = useCallback(
     async (entry: SourceControlEntry) => {
       if (!repo) return;
-      const nextSelection: DiffSelection = { path: entry.path, mode: entry.mode };
+      const nextSelection: DiffSelection = {
+        path: entry.path,
+        mode: entry.mode,
+      };
       if (sameSelection(selected, nextSelection)) {
         setActionError(null);
         setActionMessage(null);
@@ -858,7 +877,7 @@ export function useSourceControlPanel(
   const generateCommitMessage = useCallback(async () => {
     if (!repo || stagedEntries.length === 0) return;
     if (aiBusy) {
-      setActionError("Wait for the current AI action to finish");
+      setActionError(t("Wait for the current AI action to finish"));
       return;
     }
     if (aiUnavailableReason) {
@@ -913,7 +932,9 @@ export function useSourceControlPanel(
       }
       if (!isValidCommitMessage(message)) {
         throw new Error(
-          "AI returned an invalid commit message. Try again or switch models.",
+          t(
+            "AI returned an invalid commit message. Try again or switch models.",
+          ),
         );
       }
       setCommitMessage(message);
@@ -947,7 +968,10 @@ export function useSourceControlPanel(
       const result = await git.commit(repo.repoRoot, commitMessage);
       setCommitMessage("");
       setActionMessage(
-        `Committed ${result.commitSha.slice(0, 7)} ${result.summary}`,
+        t("Committed {sha} {summary}", {
+          sha: result.commitSha.slice(0, 7),
+          summary: result.summary,
+        }),
       );
       invalidateRepoDiffs(repo.repoRoot);
       await summary.refresh({ remote: "never" });
@@ -965,7 +989,9 @@ export function useSourceControlPanel(
     const result = await summary.runRemoteAction("push");
     if (result.ok) {
       setActionMessage(
-        status?.upstream ? `Pushed to ${status.upstream}` : "Push completed",
+        status?.upstream
+          ? t("Pushed to {upstream}", { upstream: status.upstream })
+          : t("Push completed"),
       );
       return;
     }
@@ -974,6 +1000,7 @@ export function useSourceControlPanel(
     }
   }, [repo, status?.upstream, summary]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates the translated label.
   const pendingDiscardView = useMemo<PendingDiscard | null>(() => {
     if (!pendingDiscard) return null;
     if (pendingDiscard.scope === "single") {
@@ -986,11 +1013,16 @@ export function useSourceControlPanel(
     return {
       scope: "all",
       count: pendingDiscard.entries.length,
-      label: `${pendingDiscard.entries.length} unstaged ${
-        pendingDiscard.entries.length === 1 ? "file" : "files"
-      }`,
+      label:
+        pendingDiscard.entries.length === 1
+          ? t("{count} unstaged file", {
+              count: pendingDiscard.entries.length,
+            })
+          : t("{count} unstaged files", {
+              count: pendingDiscard.entries.length,
+            }),
     };
-  }, [pendingDiscard]);
+  }, [locale, pendingDiscard]);
 
   return {
     panelState,

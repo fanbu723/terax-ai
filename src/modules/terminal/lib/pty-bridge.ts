@@ -1,10 +1,12 @@
+import { t } from "@/i18n";
+import type { TerminalGpuTheme } from "@/modules/terminal/ghostty/gpu/terminalVisuals";
 import {
   clearAgentActivity,
   ensureAgentActivityListener,
 } from "@/modules/terminal/lib/agentActivity";
 import {
-  type PtyStreamTransport,
   PtyOutputHub,
+  type PtyStreamTransport,
 } from "@/modules/terminal/lib/PtyOutputHub";
 import {
   PtyOutputReceiver,
@@ -17,7 +19,6 @@ import {
   unbindLeafPty,
 } from "@/modules/terminal/lib/ptyPresentation";
 import { tokenBytes } from "@/modules/terminal/lib/ptyWire";
-import type { TerminalGpuTheme } from "@/modules/terminal/ghostty/gpu/terminalVisuals";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
@@ -130,17 +131,21 @@ export async function openPty(
         if (notice !== undefined) toast.dismiss(notice);
         notice = undefined;
       } else if (status === "stalled" || status === "failed") {
-        notice = toast.error("Terminal output paused", {
+        notice = toast.error(t("Terminal output paused"), {
           id: notice,
           duration: Number.POSITIVE_INFINITY,
           description:
             status === "failed"
-              ? "The terminal could not process output. Reopen this terminal to recover."
-              : "Waiting for the terminal connection. Delivery will resume automatically.",
+              ? t(
+                  "The terminal could not process output. Reopen this terminal to recover.",
+                )
+              : t(
+                  "Waiting for the terminal connection. Delivery will resume automatically.",
+                ),
           action:
             status === "failed"
               ? undefined
-              : { label: "Retry", onClick: () => stream.retry() },
+              : { label: t("Retry"), onClick: () => stream.retry() },
         });
       }
     },

@@ -1,12 +1,13 @@
-import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/useT";
 import { isPrimaryModifierPressed } from "@/lib/platform";
+import { cn } from "@/lib/utils";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { memo } from "react";
+import { FileIcon, FolderIcon } from "./FileIcon";
 import { InlineInput } from "./InlineInput";
 import { explorerGitTextClass } from "./lib/gitStatusColor";
 import type { GitStatusCode } from "./lib/gitStatusUtils";
-import { FileIcon, FolderIcon } from "./FileIcon";
 
 export type SelectModifiers = { shift: boolean; mod: boolean };
 
@@ -165,6 +166,7 @@ export function PendingRow({
   onCommit,
   onCancel,
 }: PendingRowProps) {
+  const t = useT();
   return (
     <div
       className="flex h-6 w-full min-w-0 items-center gap-2 px-1.5 text-[13px]"
@@ -178,7 +180,7 @@ export function PendingRow({
       )}
       <InlineInput
         initial=""
-        placeholder={kind === "dir" ? "New folder" : "New file"}
+        placeholder={kind === "dir" ? t("New folder") : t("New file")}
         onCommit={onCommit}
         onCancel={onCancel}
       />

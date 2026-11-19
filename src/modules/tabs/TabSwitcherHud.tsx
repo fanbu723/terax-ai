@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { labelFor } from "./lib/tabLabel";
@@ -22,6 +23,9 @@ export function TabSwitcherHud({
   tabs: Tab[];
   state: TabSwitcherState;
 }) {
+  // Subscribe to the locale (useT re-renders on a language switch) so
+  // labelFor() at render time re-translates the tab labels.
+  useT();
   const byId = useMemo(() => new Map(tabs.map((t) => [t.id, t])), [tabs]);
   const rows = state.order
     .map((id) => byId.get(id))

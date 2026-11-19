@@ -1,6 +1,8 @@
-import { useEffect } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useLocale } from "@/i18n/useT";
 import { findLeafCwd } from "@/modules/terminal/lib/panes";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect } from "react";
+import { labelFor } from "./tabLabel";
 import type { Tab } from "./useTabs";
 
 const APP_NAME = "Terax";
@@ -15,9 +17,11 @@ function tabLabel(tab: Tab | undefined): string {
   if (!tab) return "";
   if (tab.kind === "terminal") {
     const cwd = findLeafCwd(tab.paneTree, tab.activeLeafId) ?? tab.cwd;
-    return cwd ? basename(cwd) : tab.title;
+    if (cwd) return basename(cwd);
   }
-  return tab.title;
+  // Stored titles (Git History, AI diff, default terminal names) are translated
+  // by labelFor at render time; file names stay as they are.
+  return labelFor(tab);
 }
 
 /**
@@ -33,6 +37,9 @@ export function useWindowTitle(
   activeTab: Tab | undefined,
   explorerRoot: string | null,
 ): void {
+  // Subscribe to the locale so a language switch re-renders and recomputes
+  // `label`; the effect below then pushes the translated tab label to the OS title.
+  useLocale();
   const project = explorerRoot ? basename(explorerRoot) : "";
   const label = tabLabel(activeTab);
 

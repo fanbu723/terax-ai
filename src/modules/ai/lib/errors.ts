@@ -1,17 +1,23 @@
+import { t } from "@/i18n";
+
 type ErrorDetails = {
   code: string | null;
   message: string;
 };
 
 const MAX_ERROR_LENGTH = 800;
-const FALLBACK_ERROR =
-  "The AI provider rejected the request. Check the selected model and provider settings, then try again.";
+
+function fallbackError(): string {
+  return t(
+    "The AI provider rejected the request. Check the selected model and provider settings, then try again.",
+  );
+}
 
 export function formatAiError(error: unknown): string {
   const details = extractErrorDetails(error);
-  if (!details) return FALLBACK_ERROR;
+  if (!details) return fallbackError();
   const message = sanitizeErrorMessage(details.message);
-  if (!message) return FALLBACK_ERROR;
+  if (!message) return fallbackError();
   const prefix = errorPrefix(details.code, message);
   return prefix ? `${prefix}: ${message}` : message;
 }
@@ -73,19 +79,19 @@ function errorPrefix(code: string | null, message: string): string | null {
   switch (code?.toLowerCase()) {
     case "model_not_found":
     case "not_found_error":
-      return "Model unavailable";
+      return t("Model unavailable");
     case "invalid_api_key":
     case "authentication_error":
-      return "Authentication failed";
+      return t("Authentication failed");
     case "insufficient_quota":
-      return "Quota exceeded";
+      return t("Quota exceeded");
     case "rate_limit_exceeded":
     case "rate_limit_error":
-      return "Rate limit reached";
+      return t("Rate limit reached");
   }
   return /\bmodel\b.*\b(?:limited preview|not available|not found)\b/i.test(
     message,
   )
-    ? "Model unavailable"
+    ? t("Model unavailable")
     : null;
 }

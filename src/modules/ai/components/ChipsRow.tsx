@@ -1,4 +1,9 @@
-import { CodeIcon, HashtagIcon, TerminalIcon } from "@hugeicons/core-free-icons";
+import { useT } from "@/i18n/useT";
+import {
+  CodeIcon,
+  HashtagIcon,
+  TerminalIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import type { ReactNode } from "react";
 import type { FileAttachment } from "../lib/composer";
@@ -27,6 +32,7 @@ export function ChipsRow({
   onRemoveCommand,
   leading,
 }: Props) {
+  const t = useT();
   const hasAttachments =
     files.length > 0 || snippets.length > 0 || commands.length > 0;
   if (!leading && !hasAttachments) return null;
@@ -39,7 +45,7 @@ export function ChipsRow({
           icon={cmd.icon}
           title={cmd.label}
           onRemove={() => onRemoveCommand(cmd.name)}
-          removeLabel="Remove command"
+          removeLabel={t("Remove command")}
         >
           #{cmd.name}
         </Chip>
@@ -51,7 +57,7 @@ export function ChipsRow({
           icon={HashtagIcon}
           title={s.description || s.name}
           onRemove={() => onRemoveSnippet(s.id)}
-          removeLabel="Remove snippet"
+          removeLabel={t("Remove snippet")}
         >
           {s.handle}
         </Chip>
@@ -62,7 +68,11 @@ export function ChipsRow({
           iconNode={fileIcon(f)}
           onRemove={() => onRemoveFile(f.id)}
         >
-          {f.name}
+          {f.kind === "selection"
+            ? f.source === "editor"
+              ? t("Editor selection")
+              : t("Terminal selection")
+            : f.name}
           {f.kind === "selection" && f.text ? (
             <span className="ml-1 opacity-60">· {selLineCount(f.text)}L</span>
           ) : null}
@@ -74,7 +84,13 @@ export function ChipsRow({
 
 function fileIcon(f: FileAttachment): ReactNode {
   if (f.kind === "image" && f.url) {
-    return <img src={f.url} alt="" className="size-4 shrink-0 rounded object-cover" />;
+    return (
+      <img
+        src={f.url}
+        alt=""
+        className="size-4 shrink-0 rounded object-cover"
+      />
+    );
   }
   if (f.kind === "selection") {
     return (

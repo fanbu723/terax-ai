@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -48,9 +49,11 @@ export function Chip({
   label,
   title,
   onRemove,
-  removeLabel = "Remove",
+  removeLabel,
   children,
 }: Props) {
+  const t = useT();
+  const resolvedRemoveLabel = removeLabel ?? t("Remove");
   return (
     <div
       title={title}
@@ -79,7 +82,7 @@ export function Chip({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={removeLabel}
+          aria-label={resolvedRemoveLabel}
           className="-mr-0.5 ml-0.5 grid size-3.5 shrink-0 place-items-center rounded-sm opacity-0 transition-opacity hover:!opacity-100 group-hover:opacity-60"
         >
           <HugeiconsIcon icon={Cancel01Icon} size={10} strokeWidth={2} />

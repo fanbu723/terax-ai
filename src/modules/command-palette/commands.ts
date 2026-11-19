@@ -78,12 +78,12 @@ export function createCommandItems(
   const onlyOneTab = ctx.tabs.length < 2;
   const noWorkspaceRoot = !ctx.explorerRoot && !ctx.home;
   const splitDisabled = !activeTerminalTab
-    ? "No terminal tab"
+    ? t("No terminal tab")
     : activePaneCount >= MAX_PANES_PER_TAB
-      ? "Pane limit"
+      ? t("Pane limit")
       : undefined;
   const closeDisabled =
-    onlyOneTab && activePaneCount < 2 ? "Last tab" : undefined;
+    onlyOneTab && activePaneCount < 2 ? t("Last tab") : undefined;
 
   return [
     {
@@ -140,7 +140,8 @@ export function createCommandItems(
       group: "Spaces" as const,
       keywords: ["space", "switch", "session", sp.name],
       icon: DashboardSquare01Icon,
-      disabledReason: sp.id === ctx.activeSpaceId ? "Current space" : undefined,
+      disabledReason:
+        sp.id === ctx.activeSpaceId ? t("Current space") : undefined,
       run: () => ctx.switchSpace(sp.id),
     })),
     {
@@ -176,7 +177,7 @@ export function createCommandItems(
       keywords: ["file", "editor", "create"],
       icon: FileEditIcon,
       shortcutId: "tab.newEditor",
-      disabledReason: noWorkspaceRoot ? "No workspace root" : undefined,
+      disabledReason: noWorkspaceRoot ? t("No workspace root") : undefined,
       run: ctx.openNewEditor,
     },
     {
@@ -260,7 +261,7 @@ export function createCommandItems(
       keywords: ["find", "terminal", "editor", "current"],
       icon: Search01Icon,
       shortcutId: "search.focus",
-      disabledReason: ctx.searchTarget ? undefined : "No searchable view",
+      disabledReason: ctx.searchTarget ? undefined : t("No searchable view"),
       run: ctx.focusSearch,
     },
     {
@@ -270,7 +271,7 @@ export function createCommandItems(
       keywords: ["explorer", "workspace", "file", "open"],
       icon: Search01Icon,
       shortcutId: "explorer.search",
-      disabledReason: ctx.explorerRoot ? undefined : "No workspace root",
+      disabledReason: ctx.explorerRoot ? undefined : t("No workspace root"),
       run: ctx.focusExplorerSearch,
     },
     {

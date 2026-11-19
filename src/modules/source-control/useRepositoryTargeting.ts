@@ -1,11 +1,12 @@
+import { t } from "@/i18n";
 import { git } from "@/modules/git";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   clearRepositoryTargetForSpace,
   repositoryTargetForSpace,
-  setRepositoryTargetForSpace,
   type SourceControlRepositoryTargets,
+  setRepositoryTargetForSpace,
 } from "./repositoryTarget";
 
 type RequestCounter = { current: number };
@@ -57,7 +58,7 @@ export function useRepositoryTargeting({
           return null;
         }
         if (!repo) {
-          toast.info("No Git repository contains this folder.");
+          toast.info(t("No Git repository contains this folder."));
         }
         return repo;
       } catch (error) {
@@ -65,7 +66,7 @@ export function useRepositoryTargeting({
           requestId === requestRef.current &&
           isContextCurrent(spaceId, workspaceKey)
         ) {
-          toast.error("Could not resolve Git repository", {
+          toast.error(t("Could not resolve Git repository"), {
             description: String(error),
           });
         }

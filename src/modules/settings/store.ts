@@ -198,6 +198,8 @@ export type Preferences = {
   lspActivation: Record<string, LspActivation>;
   lspCustomServers: LspCustomServer[];
   uiLanguage: UiLanguagePref;
+  /** Interface font family; empty means auto (Maple Mono NF CN → Inter). */
+  uiFontFamily: string;
 };
 
 export type EditorFormatter =
@@ -226,6 +228,7 @@ export type LspCustomServer = {
 
 const STORE_PATH = "terax-settings.json";
 const KEY_UI_LANGUAGE = "uiLanguage";
+const KEY_UI_FONT_FAMILY = "uiFontFamily";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
 const KEY_BG_KIND = "backgroundKind";
@@ -394,6 +397,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   lspCustomServers: [],
   // "auto" follows the OS/webview language; an explicit value overrides it.
   uiLanguage: "auto",
+  // Empty follows the CSS stack: Maple Mono NF CN when installed, else Inter.
+  uiFontFamily: "",
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -607,11 +612,17 @@ export async function loadPreferences(): Promise<Preferences> {
       get<LspCustomServer[]>(KEY_LSP_CUSTOM_SERVERS) ??
       DEFAULT_PREFERENCES.lspCustomServers,
     uiLanguage: coerceUiLanguage(get<string>(KEY_UI_LANGUAGE)),
+    uiFontFamily:
+      get<string>(KEY_UI_FONT_FAMILY) ?? DEFAULT_PREFERENCES.uiFontFamily,
   };
 }
 
 export async function setUiLanguage(value: UiLanguagePref): Promise<void> {
   await writePref(KEY_UI_LANGUAGE, value);
+}
+
+export async function setUiFontFamily(value: string): Promise<void> {
+  await writePref(KEY_UI_FONT_FAMILY, value.trim());
 }
 
 export async function setLspActivation(
@@ -1012,6 +1023,7 @@ export async function onPreferencesChange(
 ): Promise<UnlistenFn> {
   const map: Record<string, PrefKey> = {
     [KEY_UI_LANGUAGE]: "uiLanguage",
+    [KEY_UI_FONT_FAMILY]: "uiFontFamily",
     [KEY_THEME]: "theme",
     [KEY_THEME_ID]: "themeId",
     [KEY_BG_KIND]: "backgroundKind",

@@ -41,6 +41,7 @@ import {
   setTerminalScrollback,
   setTerminalScrollSpeed,
   setTerminalShell,
+  setUiFontFamily,
   setUiLanguage,
   setZoomLevel,
   TERMINAL_FONT_SIZES,
@@ -108,6 +109,7 @@ export function GeneralSection() {
 
   const t = useT();
   const uiLanguage = usePreferencesStore((s) => s.uiLanguage);
+  const uiFontFamily = usePreferencesStore((s) => s.uiFontFamily);
   const autostart = usePreferencesStore((s) => s.autostart);
   const restoreWindowState = usePreferencesStore((s) => s.restoreWindowState);
   const showHidden = usePreferencesStore((s) => s.showHidden);
@@ -223,6 +225,26 @@ export function GeneralSection() {
           <strong className="font-medium text-foreground">{t("Themes")}</strong>{" "}
           {t("tab.")}
         </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>{t("Fonts")}</Label>
+        <FontFamilyInput
+          title={t("Interface font")}
+          description={t(
+            "Menus, buttons and settings. Leave blank to use Maple Mono NF CN when installed, otherwise Inter.",
+          )}
+          value={uiFontFamily}
+          onCommit={(v) => void setUiFontFamily(v)}
+        />
+        <FontFamilyInput
+          title={t("Terminal & editor font")}
+          description={t(
+            'Terminal, editor and code font (e.g. "CaskaydiaCove Nerd Font Mono"). Leave blank to auto-detect an installed Nerd Font (Maple Mono NF CN first), otherwise JetBrains Mono.',
+          )}
+          value={terminalFontFamily}
+          onCommit={(v) => void setTerminalFontFamily(v)}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -371,10 +393,6 @@ export function GeneralSection() {
             </SelectContent>
           </Select>
         </SettingRow>
-        <FontFamilyInput
-          value={terminalFontFamily}
-          onCommit={(v) => void setTerminalFontFamily(v)}
-        />
         <SettingRow
           title={t("Font weight")}
           description={t("Thickness of terminal characters")}
@@ -748,9 +766,13 @@ function notificationTestTitle(
 function FontFamilyInput({
   value,
   onCommit,
+  title,
+  description,
 }: {
   value: string;
   onCommit: (v: string) => void;
+  title: string;
+  description: string;
 }) {
   const t = useT();
   const [draft, setDraft] = useState(value);
@@ -768,12 +790,7 @@ function FontFamilyInput({
   };
 
   return (
-    <SettingRow
-      title={t("Font family")}
-      description={t(
-        'Terminal font (e.g. "CaskaydiaCove Nerd Font Mono"). Icons render without a Nerd Font; leave blank to use an installed one when found.',
-      )}
-    >
+    <SettingRow title={title} description={description}>
       <input
         type="text"
         value={draft}

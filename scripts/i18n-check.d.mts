@@ -1,5 +1,6 @@
 export declare function collectSourceKeys(srcRoot?: string): Set<string>;
 export declare function collectLocaleEntries(file: string): Map<string, string>;
+export declare function collectDuplicateKeys(file: string): string[];
 export declare function checkLocale(
   localeFile: string,
   srcRoot?: string,
@@ -7,5 +8,6 @@ export declare function checkLocale(
   missing: string[];
   stale: string[];
   emDash: string[];
+  duplicates: string[];
   checked: number;
 };

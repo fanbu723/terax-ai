@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   useCallback,
@@ -159,7 +160,7 @@ export function useExplorerDnd({
         }
         setDragLabel(
           sources.length > 1
-            ? `${sources.length} items`
+            ? t("{count} items", { count: sources.length })
             : source.slice(source.lastIndexOf("/") + 1),
         );
       }

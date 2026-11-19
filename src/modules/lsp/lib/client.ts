@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { highlightingFor, indentUnit, language } from "@codemirror/language";
 import {
   type Extension,
@@ -322,7 +323,7 @@ export function lspInteractions(opts: {
     } catch {
       return;
     }
-    showResults(view, "Definitions", normalizeLocations(result));
+    showResults(view, t("Definitions"), normalizeLocations(result));
   };
 
   const findReferences = async (
@@ -339,7 +340,7 @@ export function lspInteractions(opts: {
     } catch {
       return;
     }
-    showResults(view, "References", result ?? []);
+    showResults(view, t("References"), result ?? []);
   };
 
   return [
@@ -420,8 +421,11 @@ export class TeraxLspClient extends LanguageServerClient {
     position: LspPos;
     context: { includeDeclaration: boolean };
   }): Promise<LspLocation[] | null> {
-    return this.raw.request("textDocument/references", params, 10_000) as
-      Promise<LspLocation[] | null>;
+    return this.raw.request(
+      "textDocument/references",
+      params,
+      10_000,
+    ) as Promise<LspLocation[] | null>;
   }
 
   textDocumentDidClose(uri: string): void {
