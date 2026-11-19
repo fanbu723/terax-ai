@@ -3,6 +3,7 @@ import type { ToolUIPart, UIMessagePart } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import type { RiskCode, RiskLevel } from "../lib/risk";
 import { native } from "../lib/native";
+import { pendingApprovalIds } from "../lib/pendingApprovals";
 import { checkReadable } from "../lib/security";
 import { resolvePath } from "../tools/tools";
 import {
@@ -97,16 +98,8 @@ function Bridge({ sessionId, openAiDiffTab, closeAiDiffTab }: BridgeProps) {
     return () => flushPersist(sessionId);
   }, [sessionId]);
 
-  const approvalsPending = useMemo(() => {
-    let n = 0;
-    for (const m of messages) {
-      if (m.role !== "assistant") continue;
-      for (const p of m.parts) {
-        if ((p as { state?: string }).state === "approval-requested") n++;
-      }
-    }
-    return n;
-  }, [messages]);
+  const approvalIds = useMemo(() => pendingApprovalIds(messages), [messages]);
+  const approvalsPending = approvalIds.length;
 
   useEffect(() => {
     let runStatus: AgentRunStatus;
@@ -118,10 +111,11 @@ function Bridge({ sessionId, openAiDiffTab, closeAiDiffTab }: BridgeProps) {
     patch({
       status: runStatus,
       approvalsPending,
+      approvalIds,
       ...(runStatus === "idle" || runStatus === "error" ? { step: null } : {}),
       ...(runStatus === "idle" ? { error: null } : {}),
     });
-  }, [status, approvalsPending, patch]);
+  }, [status, approvalsPending, approvalIds, patch]);
 
   useEffect(() => {
     if (approvalsPending > 0) openMini();

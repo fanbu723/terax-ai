@@ -57,6 +57,8 @@ export type AgentMeta = {
   status: AgentRunStatus;
   step: string | null;
   approvalsPending: number;
+  /** Tool-approval ids waiting for an answer, oldest first. */
+  approvalIds: string[];
   error: string | null;
   tokens: AgentUsage;
   lastInputTokens: number;
@@ -75,6 +77,7 @@ const IDLE_META: AgentMeta = {
   status: "idle",
   step: null,
   approvalsPending: 0,
+  approvalIds: [],
   error: null,
   tokens: ZERO_USAGE,
   lastInputTokens: 0,
@@ -107,6 +110,8 @@ type StoreState = {
   approvalResponder: ApprovalResponder | null;
   setApprovalResponder: (fn: ApprovalResponder | null) => void;
   respondToApproval: (approvalId: string, approved: boolean) => void;
+  /** Answers the newest waiting approval; false when nothing is pending. */
+  respondToNextApproval: (approved: boolean) => boolean;
 
   apiKeys: ProviderKeys;
   setApiKeys: (keys: ProviderKeys) => void;
@@ -236,6 +241,21 @@ export const useChatStore = create<StoreState>((set, get) => ({
   respondToApproval: (approvalId, approved) => {
     const fn = get().approvalResponder;
     if (fn) fn(approvalId, approved);
+  },
+  respondToNextApproval: (approved) => {
+    const { agentMeta, approvalResponder } = get();
+    const id = agentMeta.approvalIds[agentMeta.approvalIds.length - 1];
+    if (!id || !approvalResponder) return false;
+    // Drop it optimistically: a second press answers the next card instead of
+    // resolving the same request twice.
+    set((s) => ({
+      agentMeta: {
+        ...s.agentMeta,
+        approvalIds: s.agentMeta.approvalIds.filter((other) => other !== id),
+      },
+    }));
+    approvalResponder(id, approved);
+    return true;
   },
 
   apiKeys: { ...EMPTY_PROVIDER_KEYS },

@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
+import { useShortcutHint } from "@/modules/shortcuts";
 import { getApprovalDecision } from "../lib/approvalDecisions";
 import { riskLevelLabel, riskReasonLabel } from "../lib/riskCopy";
+import { useChatStore } from "../store/chatStore";
 import {
   Cancel01Icon,
   Edit02Icon,
@@ -60,6 +62,14 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
   const Icon = meta ?? ToolsIcon;
   const input = part.input as Record<string, unknown>;
   const decision = getApprovalDecision(part.toolCallId);
+  const approveHint = useShortcutHint("ai.approveTool");
+  const denyHint = useShortcutHint("ai.denyTool");
+  // The shortcuts answer the newest waiting card; only that one advertises them.
+  const isNextApproval = useChatStore(
+    (s) =>
+      s.agentMeta.approvalIds[s.agentMeta.approvalIds.length - 1] ===
+      part.approval.id,
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -108,6 +118,23 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
       </div>
 
       <div className="flex items-center justify-end gap-1.5 border-t border-border/60 px-3 py-2">
+        {isNextApproval && (approveHint || denyHint) ? (
+          <div className="mr-auto flex min-w-0 items-center gap-1.5 truncate text-[10px] text-muted-foreground">
+            {denyHint ? (
+              <span className="truncate">
+                {denyHint} {t("Deny")}
+              </span>
+            ) : null}
+            {denyHint && approveHint ? (
+              <span className="opacity-40">·</span>
+            ) : null}
+            {approveHint ? (
+              <span className="truncate">
+                {approveHint} {t("Approve")}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <Button
           size="sm"
           variant="ghost"
