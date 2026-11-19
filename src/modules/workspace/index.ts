@@ -7,6 +7,7 @@ export {
   parseWorkspaceScopeKey,
   sshHome,
   useWorkspaceEnvStore,
+  workspaceFallbackRoot,
   workspaceScopeKey,
   type WorkspaceEnv,
 } from "./env";

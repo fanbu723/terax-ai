@@ -6,6 +6,7 @@ import {
   parseWorkspaceScopeKey,
   sshHome,
   useWorkspaceEnvStore,
+  workspaceFallbackRoot,
   workspaceScopeKey,
   type WorkspaceEnv,
 } from "./env";
@@ -62,5 +63,29 @@ describe("sshHome", () => {
     mocks.invoke.mockResolvedValueOnce("/home/me");
     await expect(sshHome("host-1")).resolves.toBe("/home/me");
     expect(mocks.invoke).toHaveBeenCalledWith("ssh_home", { id: "host-1" });
+  });
+});
+
+describe("workspaceFallbackRoot", () => {
+  it("keeps the launch directory for local and WSL workspaces", () => {
+    expect(
+      workspaceFallbackRoot(LOCAL_WORKSPACE, "/work/app", "/home/me"),
+    ).toBe("/work/app");
+    expect(workspaceFallbackRoot(wsl, "/work/app", "/home/me")).toBe(
+      "/work/app",
+    );
+    expect(workspaceFallbackRoot(LOCAL_WORKSPACE, null, "/home/me")).toBe(
+      "/home/me",
+    );
+  });
+
+  it("never leaks the local launch directory into an SSH workspace", () => {
+    // Observed bug: launching from a project directory rooted the remote
+    // explorer at /home/me/project/app, which the transport rejected as an
+    // unauthorized remote path.
+    expect(workspaceFallbackRoot(ssh, "/home/me/project/app", "/home/me")).toBe(
+      "/home/me",
+    );
+    expect(workspaceFallbackRoot(ssh, "/home/me/project/app", null)).toBe(null);
   });
 });

@@ -128,6 +128,7 @@ import { UpdaterDialog } from "@/modules/updater";
 import {
   useWorkspaceEnvStore,
   type WorkspaceEnv,
+  workspaceFallbackRoot,
   workspaceScopeKey,
 } from "@/modules/workspace";
 import { invoke } from "@tauri-apps/api/core";
@@ -420,10 +421,17 @@ export default function App() {
   useEditorFileSync({ tabs, tabsRef, editorRefs });
   useThemeFileEditing({ tabsRef, openFileTab });
 
+  // `spaceTabs` (scoped above) also feeds the explorer root: a tab from another
+  // space, or the bootstrap tab from before spaces hydrate, can carry a path
+  // from a different machine (a local launch directory while an SSH space is
+  // active), so only the active space may inform it.
   const { explorerRoot, inheritedCwdForNewTab } = useWorkspaceCwd(
     activeTab,
-    tabs,
-    launchCwd ?? home,
+    spaceTabs,
+    // A remote space must not adopt this machine's launch directory as its
+    // explorer root; see `workspaceFallbackRoot`.
+    workspaceFallbackRoot(workspaceEnv, launchCwd, home),
+    `${activeSpaceId ?? ""}:${workspaceScopeKey(workspaceEnv)}`,
   );
 
   useWindowTitle(activeTab, explorerRoot);
@@ -1481,7 +1489,7 @@ export default function App() {
   useAiLiveBridge({
     setLive,
     activeId,
-    tabs,
+    tabs: spaceTabs,
     explorerRoot,
     launchCwd,
     home,

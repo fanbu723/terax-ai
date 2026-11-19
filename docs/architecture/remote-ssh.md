@@ -95,6 +95,13 @@ symlinks are preserved without being followed.
 | AI shell tools (`bash_run`) and one-shot shell commands | `ssh -- sh -lc`, with the Host keeping the cwd state as before. |
 | Host manager, remote spaces, status pill, command palette | Settings › Remote SSH plus the space dialog and palette entries. |
 
+The explorer is rooted at the active space's folder — the cwd of its terminals
+when one has run, otherwise the remote `$HOME`. The local launch directory is
+never used as a fallback for a remote space: it is this machine's path and the
+transport would reject it as unauthorized (a tab from another space or the
+bootstrap tab must not leak one either). Files opened outside an authorized
+root are refused with the same message the backend returns.
+
 ## What is deliberately not implemented yet
 
 These fail closed with `… is not available for SSH remote workspaces yet`

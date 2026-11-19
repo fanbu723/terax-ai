@@ -4,7 +4,11 @@ import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { Tab } from "@/modules/tabs";
 import { DEFAULT_SPACE_ID } from "@/modules/tabs/lib/useTabs";
 import { isLeaf, type PaneNode } from "@/modules/terminal/lib/panes";
-import { parseWorkspaceScopeKey, type WorkspaceEnv } from "@/modules/workspace";
+import {
+  parseWorkspaceScopeKey,
+  sshHome,
+  type WorkspaceEnv,
+} from "@/modules/workspace";
 import { useEffect, useRef } from "react";
 import { findActiveSpace, freshTabCwd, resolveSpaceEnv } from "./activeSpace";
 import { freshTerminalTab, hydrateTabs } from "./serialize";
@@ -56,7 +60,6 @@ export function useSpacesBoot({
         const { spaces, activeId, states } = await loadAll();
 
         if (spaces.length === 0) {
-          const root = launchCwd ?? home ?? null;
           // Hydrate prefs before reading the saved workspace env.
           await usePreferencesStore
             .getState()
@@ -66,14 +69,21 @@ export function useSpacesBoot({
             usePreferencesStore.getState().defaultWorkspaceEnv,
           );
           if (parsedEnv.kind === "ssh") await useSshHosts.getState().hydrate();
+          const env = resolveSpaceEnv(
+            { env: parsedEnv },
+            useSshHosts.getState().hosts,
+          );
+          // A local default roots at this machine's launch directory; an SSH
+          // default must root at the remote home, never at a local path.
+          const root =
+            env.kind === "ssh"
+              ? await sshHome(env.hostId).catch(() => null)
+              : (launchCwd ?? home ?? null);
           const meta: SpaceMeta = {
             id: DEFAULT_SPACE_ID,
             name: "Default",
             root,
-            env: resolveSpaceEnv(
-              { env: parsedEnv },
-              useSshHosts.getState().hosts,
-            ),
+            env,
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };

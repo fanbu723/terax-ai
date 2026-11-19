@@ -94,3 +94,20 @@ export async function getWslHome(distro: string): Promise<string> {
 export async function sshHome(hostId: string): Promise<string> {
   return invoke<string>("ssh_home", { id: hostId });
 }
+
+/**
+ * The directory a workspace falls back to when no tab supplied one.
+ *
+ * `launchCwd` is this machine's process directory. That is the right fallback
+ * for a local workspace (launch Terax in a project to work on it) and the wrong
+ * one for SSH: the path would travel to the remote transport as a remote path,
+ * where it is missing or outside the authorized root. A remote workspace falls
+ * back to its resolved remote home instead.
+ */
+export function workspaceFallbackRoot(
+  env: WorkspaceEnv,
+  launchCwd: string | null,
+  home: string | null,
+): string | null {
+  return env.kind === "ssh" ? (home ?? null) : (launchCwd ?? home);
+}
