@@ -86,6 +86,8 @@ The themes below frame every scope decision.
 - [x] Tools with per-action approval gating (file write / edit, bash, and filesystem mutations)
 - [x] Three agent permission modes (manual, risk-assessed assisted, allow all) with per-session switching and a configurable default
 - [x] Deterministic tool-risk assessment, auto-approved mutations reviewed in a diff tab, and per-call annotations in the transcript
+- [x] Keyboard approve/deny for pending tool approvals, with configurable chords
+- [x] DSH console in the agent window over ACP (gateway): plan, slash commands, elicitation, model/mode options and session resume
 - [x] Workspace file picker
 - [x] Auto-compact for long context
 
@@ -127,6 +129,7 @@ The themes below frame every scope decision.
 - [ ] Expand external coding-agent orchestration beyond Claude Code
 - [ ] Complete, extensible slash-command and reusable skills system
 - [ ] Project-scoped permission policies and per-tool trust overrides
+- [ ] DSH editor bridge: open tool-call files and diffs from the console in Terax tabs
 - [ ] Persistent terminal processes across app restarts
 
 ### Longer horizon
