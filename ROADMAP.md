@@ -121,7 +121,8 @@ The themes below frame every scope decision.
 
 ### Coming next
 
-- [ ] SSH support (PTY auth and known_hosts first; SFTP and port forwarding later)
+- [x] SSH remote workspaces: system-OpenSSH transport with PTY auth and known_hosts, host manager, remote terminals and remote file explorer/editor
+- [ ] SSH follow-ups: `git`/search/LSP over SSH, remote shell-integration scripts, SFTP-style persistent helper and port forwarding
 - [ ] Inline terminal auto-suggestions (history-based first; AI-powered opt-in later)
 - [ ] AI agent reliability and workflow improvements (tool execution, context management, recovery, and long-running tasks)
 - [ ] Expand external coding-agent orchestration beyond Claude Code
