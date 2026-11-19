@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import {
@@ -46,6 +47,10 @@ import {
   setCustomEndpointKey,
   setKey,
 } from "@/modules/ai/lib/keyring";
+import {
+  modelDescriptionLabel,
+  modelHintLabel,
+} from "@/modules/ai/lib/modelCopy";
 import { useChatStore } from "@/modules/ai/store/chatStore";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import {
@@ -103,62 +108,83 @@ type LocalMeta = {
   modelHint: React.ReactNode;
 };
 
-const LOCAL_META: Partial<Record<ProviderId, LocalMeta>> = {
-  lmstudio: {
-    urlPlaceholder: "http://localhost:1234/v1",
-    modelPlaceholder: "qwen2.5-coder-7b-instruct",
-    description:
-      "Run GGUF models via LM Studio's HTTP server (Developer tab → enable).",
-    modelHint: (
-      <>
-        The model id loaded in LM Studio — see the server's{" "}
-        <span className="font-mono">/v1/models</span> page.
-      </>
-    ),
-  },
-  mlx: {
-    urlPlaceholder: "http://127.0.0.1:8080/v1",
-    modelPlaceholder: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
-    description:
-      "Apple-silicon inference via mlx_lm.server (pip install mlx-lm).",
-    modelHint: <>The Hugging Face repo path you launched mlx_lm.server with.</>,
-  },
-  ollama: {
-    urlPlaceholder: "http://localhost:11434/v1",
-    modelPlaceholder: "qwen2.5-coder:7b",
-    description: "Local models via Ollama's built-in OpenAI-compatible API.",
-    modelHint: <>The model name from `ollama list` / `ollama pull`.</>,
-  },
-  "openai-compatible": {
-    urlPlaceholder: "https://api.example.com/v1",
-    modelPlaceholder: "gpt-4o, qwen3-max, glm-4.6, …",
-    description: "Any OpenAI-compatible endpoint — vLLM, Z.AI, Fireworks, etc.",
-    modelHint: null,
-  },
-  openrouter: {
-    urlPlaceholder: "",
-    modelPlaceholder: "anthropic/claude-sonnet-5, openai/gpt-5.6, …",
-    description: "Any model on OpenRouter — type its full provider/model id.",
-    modelHint: (
-      <>
-        Browse ids at <span className="font-mono">openrouter.ai/models</span>.
-      </>
-    ),
-  },
-};
-
-function reportCredentialRemovalError(error: unknown): void {
-  toast.error("Could not remove credential", { description: String(error) });
+/**
+ * Local provider copy lives in a factory so `t()` runs during render, after
+ * the language pack has loaded, instead of once at module scope.
+ */
+function localMeta(t: TFunction): Partial<Record<ProviderId, LocalMeta>> {
+  return {
+    lmstudio: {
+      urlPlaceholder: "http://localhost:1234/v1",
+      modelPlaceholder: "qwen2.5-coder-7b-instruct",
+      description: t(
+        "Run GGUF models via LM Studio's HTTP server (Developer tab → enable).",
+      ),
+      modelHint: (
+        <>
+          {t("The model id loaded in LM Studio — see the server's")}{" "}
+          <span className="font-mono">/v1/models</span> {t("page.")}
+        </>
+      ),
+    },
+    mlx: {
+      urlPlaceholder: "http://127.0.0.1:8080/v1",
+      modelPlaceholder: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit",
+      description: t(
+        "Apple-silicon inference via mlx_lm.server (pip install mlx-lm).",
+      ),
+      modelHint: (
+        <>{t("The Hugging Face repo path you launched mlx_lm.server with.")}</>
+      ),
+    },
+    ollama: {
+      urlPlaceholder: "http://localhost:11434/v1",
+      modelPlaceholder: "qwen2.5-coder:7b",
+      description: t(
+        "Local models via Ollama's built-in OpenAI-compatible API.",
+      ),
+      modelHint: <>{t("The model name from `ollama list` / `ollama pull`.")}</>,
+    },
+    "openai-compatible": {
+      urlPlaceholder: "https://api.example.com/v1",
+      modelPlaceholder: "gpt-4o, qwen3-max, glm-4.6, …",
+      description: t(
+        "Any OpenAI-compatible endpoint — vLLM, Z.AI, Fireworks, etc.",
+      ),
+      modelHint: null,
+    },
+    openrouter: {
+      urlPlaceholder: "",
+      modelPlaceholder: "anthropic/claude-sonnet-5, openai/gpt-5.6, …",
+      description: t(
+        "Any model on OpenRouter — type its full provider/model id.",
+      ),
+      modelHint: (
+        <>
+          {t("Browse ids at")}{" "}
+          <span className="font-mono">openrouter.ai/models</span>
+          {t(".")}
+        </>
+      ),
+    },
+  };
 }
 
-function reportPartialRemovalError(error: unknown): void {
-  toast.error("Credential removed; settings may be incomplete", {
+function reportCredentialRemovalError(error: unknown, t: TFunction): void {
+  toast.error(t("Could not remove credential"), {
+    description: String(error),
+  });
+}
+
+function reportPartialRemovalError(error: unknown, t: TFunction): void {
+  toast.error(t("Credential removed; settings may be incomplete"), {
     description: String(error),
   });
 }
 
 export function ModelsSection() {
   const t = useT();
+  const localMetaTable = localMeta(t);
   const [keys, setKeys] = useState<KeysMap | null>(null);
   const [epKeys, setEpKeys] = useState<CustomEndpointKeys>({});
   const [adding, setAdding] = useState<Set<ProviderId>>(new Set());
@@ -195,7 +221,9 @@ export function ModelsSection() {
   const onClearKey = async (provider: ProviderId) => {
     await clearKey(provider);
     setKeys((prev) => (prev ? { ...prev, [provider]: null } : prev));
-    await emitKeysChanged().catch(reportPartialRemovalError);
+    await emitKeysChanged().catch((error) =>
+      reportPartialRemovalError(error, t),
+    );
   };
 
   const onSaveEndpointKey = async (endpointId: string, value: string) => {
@@ -207,7 +235,9 @@ export function ModelsSection() {
   const onClearEndpointKey = async (endpointId: string) => {
     await clearCustomEndpointKey(endpointId);
     setEpKeys((prev) => ({ ...prev, [endpointId]: null }));
-    await emitKeysChanged().catch(reportPartialRemovalError);
+    await emitKeysChanged().catch((error) =>
+      reportPartialRemovalError(error, t),
+    );
   };
 
   const addCustomEndpoint = async () => {
@@ -274,7 +304,7 @@ export function ModelsSection() {
       );
       if (failed) throw failed.reason;
     } catch (error) {
-      reportPartialRemovalError(error);
+      reportPartialRemovalError(error, t);
     }
   };
 
@@ -334,7 +364,9 @@ export function ModelsSection() {
   };
 
   if (!keys) {
-    return <div className="text-[12px] text-muted-foreground">Loading…</div>;
+    return (
+      <div className="text-[12px] text-muted-foreground">{t("Loading…")}</div>
+    );
   }
 
   const configuredIds = new Set(
@@ -367,7 +399,7 @@ export function ModelsSection() {
         return next;
       });
     } catch (error) {
-      reportPartialRemovalError(error);
+      reportPartialRemovalError(error, t);
     }
   };
 
@@ -406,10 +438,12 @@ export function ModelsSection() {
         {visibleProviders.length === 0 && customEndpoints.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/60 bg-card/40 px-4 py-8 text-center">
             <p className="text-[12px] text-muted-foreground">
-              No providers connected yet.
+              {t("No providers connected yet.")}
             </p>
             <p className="mt-0.5 text-[10.5px] text-muted-foreground/70">
-              Click "Add provider" to connect a cloud or local model source.
+              {t(
+                'Click "Add provider" to connect a cloud or local model source.',
+              )}
             </p>
           </div>
         ) : (
@@ -421,14 +455,18 @@ export function ModelsSection() {
                   provider={p}
                   configured={configuredIds.has(p.id)}
                   config={localConfig(p.id)!}
-                  meta={LOCAL_META[p.id]!}
+                  meta={localMetaTable[p.id]!}
                   compatKey={keys[p.id]}
                   onSaveKey={(v) => onSaveKey(p.id, v)}
                   onClearKey={() =>
-                    onClearKey(p.id).catch(reportCredentialRemovalError)
+                    onClearKey(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                   onRemove={() =>
-                    removeProvider(p.id).catch(reportCredentialRemovalError)
+                    removeProvider(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                 />
               ) : isLocalProvider(p.id) ? (
@@ -437,13 +475,17 @@ export function ModelsSection() {
                   provider={p}
                   configured={configuredIds.has(p.id)}
                   config={localConfig(p.id)!}
-                  meta={LOCAL_META[p.id]!}
+                  meta={localMetaTable[p.id]!}
                   onSaveKey={(v) => onSaveKey(p.id, v)}
                   onClearKey={() =>
-                    onClearKey(p.id).catch(reportCredentialRemovalError)
+                    onClearKey(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                   onRemove={() =>
-                    removeProvider(p.id).catch(reportCredentialRemovalError)
+                    removeProvider(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                 />
               ) : (
@@ -453,10 +495,14 @@ export function ModelsSection() {
                   currentKey={keys[p.id]}
                   onSave={(v) => onSaveKey(p.id, v)}
                   onClear={() =>
-                    onClearKey(p.id).catch(reportCredentialRemovalError)
+                    onClearKey(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                   onRemove={() =>
-                    removeProvider(p.id).catch(reportCredentialRemovalError)
+                    removeProvider(p.id).catch((error) =>
+                      reportCredentialRemovalError(error, t),
+                    )
                   }
                 />
               ),
@@ -468,12 +514,14 @@ export function ModelsSection() {
                 endpointKey={epKeys[ep.id] ?? null}
                 onSaveKey={(v) => onSaveEndpointKey(ep.id, v)}
                 onClearKey={() =>
-                  onClearEndpointKey(ep.id).catch(reportCredentialRemovalError)
+                  onClearEndpointKey(ep.id).catch((error) =>
+                    reportCredentialRemovalError(error, t),
+                  )
                 }
                 onUpdate={(patch) => updateCustomEndpoint(ep.id, patch)}
                 onRemove={() =>
-                  removeCustomEndpoint(ep.id).catch(
-                    reportCredentialRemovalError,
+                  removeCustomEndpoint(ep.id).catch((error) =>
+                    reportCredentialRemovalError(error, t),
                   )
                 }
               />
@@ -504,6 +552,7 @@ function AddProviderMenu({
   onAdd: (id: ProviderId) => void;
   onAddCompat: () => void;
 }) {
+  const t = useT();
   const cloud = providers.filter((p) => !isLocalProvider(p.id));
   const local = providers.filter(
     (p) => isLocalProvider(p.id) && p.id !== "openai-compatible",
@@ -518,14 +567,14 @@ function AddProviderMenu({
           className="h-7 gap-1.5 px-2.5 text-[11px]"
         >
           <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={2} />
-          Add provider
+          {t("Add provider")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-55 p-1">
         {cloud.length > 0 ? (
           <>
             <DropdownMenuLabel className="px-2 text-[10px] tracking-wide text-muted-foreground uppercase">
-              Cloud
+              {t("Cloud")}
             </DropdownMenuLabel>
             {cloud.map((p) => (
               <ProviderMenuItem key={p.id} provider={p} onAdd={onAdd} />
@@ -533,7 +582,7 @@ function AddProviderMenu({
           </>
         ) : null}
         <DropdownMenuLabel className="px-2 text-[10px] tracking-wide text-muted-foreground uppercase">
-          Local & custom
+          {t("Local & custom")}
         </DropdownMenuLabel>
         {local.map((p) => (
           <ProviderMenuItem key={p.id} provider={p} onAdd={onAdd} />
@@ -543,7 +592,7 @@ function AddProviderMenu({
           className="flex items-center gap-2 text-[12px]"
         >
           <ProviderIcon provider="openai-compatible" size={13} />
-          <span>OpenAI Compatible</span>
+          <span>{t("OpenAI Compatible")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -607,6 +656,7 @@ function DefaultModelPicker({
   defaultModel: ModelId;
   configuredIds: Set<ProviderId>;
 }) {
+  const t = useT();
   const m = getModel(defaultModel);
   const hasAny = configuredIds.size > 0;
 
@@ -621,7 +671,9 @@ function DefaultModelPicker({
           <span className="flex items-center gap-2 truncate">
             <ProviderIcon provider={m.provider} size={13} />
             <span className="truncate">{m.label}</span>
-            <span className="text-muted-foreground">· {m.hint}</span>
+            <span className="text-muted-foreground">
+              · {modelHintLabel(m.hint, t)}
+            </span>
           </span>
           <HugeiconsIcon
             icon={ArrowDown01Icon}
@@ -660,7 +712,7 @@ function DefaultModelPicker({
                     <span className="flex flex-1 flex-col">
                       <span>{mod.label}</span>
                       <span className="text-[10px] text-muted-foreground">
-                        {mod.description}
+                        {modelDescriptionLabel(mod.description, t)}
                       </span>
                     </span>
                   </DropdownMenuItem>
@@ -775,7 +827,7 @@ function AutocompleteRow({
                   <ProviderIcon provider={currentModel.provider} size={12} />
                   <span className="truncate">{currentModel.label}</span>
                   <span className="text-muted-foreground">
-                    · {currentModel.hint}
+                    · {modelHintLabel(currentModel.hint, t)}
                   </span>
                 </span>
                 <HugeiconsIcon
@@ -803,7 +855,7 @@ function AutocompleteRow({
                       <span>{p.label}</span>
                       {!pConfigured ? (
                         <span className="ml-auto text-[9.5px] normal-case tracking-normal text-muted-foreground/70">
-                          not connected
+                          {t("not connected")}
                         </span>
                       ) : null}
                     </div>
@@ -820,7 +872,7 @@ function AutocompleteRow({
                         <span className="flex flex-col">
                           <span>{m.label}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {m.description}
+                            {modelDescriptionLabel(m.description, t)}
                           </span>
                         </span>
                       </DropdownMenuItem>
@@ -844,9 +896,13 @@ function AutocompleteRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="auto">Automatic (as you type)</SelectItem>
+              <SelectItem value="auto">
+                {t("Automatic (as you type)")}
+              </SelectItem>
               <SelectItem value="manual">
-                Manual ({aiCompleteShortcut || "shortcut"})
+                {t("Manual ({shortcut})", {
+                  shortcut: aiCompleteShortcut || t("shortcut"),
+                })}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -854,7 +910,9 @@ function AutocompleteRow({
       ) : null}
       {enabled && !hasKey ? (
         <p className="pl-19 text-[10.5px] text-muted-foreground">
-          {getProvider(provider).label} isn't connected — add it below.
+          {t("{provider} isn't connected — add it below.", {
+            provider: getProvider(provider).label,
+          })}
         </p>
       ) : null}
     </>
@@ -930,7 +988,7 @@ function LocalProviderCard({
               size={9}
               strokeWidth={2}
             />
-            Connected
+            {t("Connected")}
           </Badge>
         ) : null}
         <button
@@ -938,7 +996,7 @@ function LocalProviderCard({
           onClick={() => void openUrl(provider.consoleUrl)}
           className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          Docs
+          {t("Docs")}
           <HugeiconsIcon
             icon={ArrowUpRight01Icon}
             size={11}
@@ -982,7 +1040,7 @@ function LocalProviderCard({
                 disabled={!urlDraft.trim()}
                 className="h-8 px-3 text-[11px]"
               >
-                Test
+                {t("Test")}
               </Button>
             </div>
           </FieldRow>
@@ -1018,7 +1076,7 @@ function LocalProviderCard({
                 className="h-8 w-28 font-mono text-[11.5px]"
               />
               <span className="text-[10.5px] text-muted-foreground">
-                tokens
+                {t("tokens")}
               </span>
             </div>
           </FieldRow>
@@ -1068,7 +1126,7 @@ function LocalProviderCard({
                   disabled={!keyDraft.trim()}
                   className="h-8 px-3 text-[11px]"
                 >
-                  Save
+                  {t("Save")}
                 </Button>
               </div>
             )}
@@ -1153,7 +1211,7 @@ function CustomEndpointCard({
         />
         <ProviderIcon provider="openai-compatible" size={15} />
         <span className="text-[12.5px] font-medium truncate">
-          {endpoint.name || "OpenAI Compatible"}
+          {endpoint.name || t("OpenAI Compatible")}
         </span>
         {endpoint.modelId.trim() && (
           <span className="text-[10.5px] text-muted-foreground truncate font-mono">
@@ -1170,7 +1228,7 @@ function CustomEndpointCard({
               size={9}
               strokeWidth={2}
             />
-            Connected
+            {t("Connected")}
           </Badge>
         ) : null}
         <Button
@@ -1197,7 +1255,7 @@ function CustomEndpointCard({
                 const v = nameDraft.trim();
                 if (v !== endpoint.name) void onUpdate({ name: v });
               }}
-              placeholder="My endpoint"
+              placeholder={t("My endpoint")}
               spellCheck={false}
               className="h-8 flex-1 text-[11.5px]"
             />
@@ -1223,7 +1281,7 @@ function CustomEndpointCard({
                 disabled={!urlDraft.trim()}
                 className="h-8 px-3 text-[11px]"
               >
-                Test
+                {t("Test")}
               </Button>
             </div>
           </FieldRow>
@@ -1258,7 +1316,7 @@ function CustomEndpointCard({
                 className="h-8 w-28 font-mono text-[11.5px]"
               />
               <span className="text-[10.5px] text-muted-foreground">
-                tokens
+                {t("tokens")}
               </span>
             </div>
           </FieldRow>
@@ -1306,7 +1364,7 @@ function CustomEndpointCard({
                   disabled={!keyDraft.trim()}
                   className="h-8 px-3 text-[11px]"
                 >
-                  Save
+                  {t("Save")}
                 </Button>
               </div>
             )}
@@ -1341,23 +1399,26 @@ function StatusLine({
 }: {
   status: "idle" | "testing" | "ok" | "fail";
 }) {
+  const t = useT();
   if (status === "idle") return null;
   if (status === "testing") {
     return (
-      <span className="text-[10.5px] text-muted-foreground">Testing…</span>
+      <span className="text-[10.5px] text-muted-foreground">
+        {t("Testing…")}
+      </span>
     );
   }
   if (status === "ok") {
     return (
       <span className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
         <HugeiconsIcon icon={CheckmarkCircle02Icon} size={11} strokeWidth={2} />
-        Reachable — server responded.
+        {t("Reachable — server responded.")}
       </span>
     );
   }
   return (
     <span className="text-[10.5px] text-destructive/80">
-      Could not reach the server.
+      {t("Could not reach the server.")}
     </span>
   );
 }
@@ -1377,7 +1438,7 @@ function VoiceBlock() {
     <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
       <div className="flex items-center gap-2">
         <HugeiconsIcon icon={Mic01Icon} size={15} strokeWidth={1.5} />
-        <span className="text-[12.5px] font-medium">Voice input</span>
+        <span className="text-[12.5px] font-medium">{t("Voice input")}</span>
       </div>
 
       <FieldRow label={t("Provider")}>
@@ -1415,11 +1476,17 @@ function VoiceBlock() {
 
       <p className="text-[10.5px] leading-relaxed text-muted-foreground">
         {sttProvider === "openai" &&
-          "Uses your official OpenAI API key and the Whisper model for transcription."}
+          t(
+            "Uses your official OpenAI API key and the Whisper model for transcription.",
+          )}
         {sttProvider === "groq" &&
-          "Uses your official Groq API key and Groq's Whisper endpoint for transcription."}
+          t(
+            "Uses your official Groq API key and Groq's Whisper endpoint for transcription.",
+          )}
         {sttProvider === "whispercpp" &&
-          "Connects to a local Whisper.cpp server for fully offline transcription."}
+          t(
+            "Connects to a local Whisper.cpp server for fully offline transcription.",
+          )}
       </p>
 
       {sttProvider === "groq" && (

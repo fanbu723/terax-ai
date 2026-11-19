@@ -86,10 +86,10 @@ function ServerRow({
   const langs = Object.keys(server.languages).join(", ");
   const status =
     detected === undefined
-      ? "checking..."
+      ? t("checking...")
       : detected
         ? detected
-        : "not found on PATH";
+        : t("not found on PATH");
   const switchState = resolveLspSwitchState(enabled, detected);
 
   return (
@@ -131,7 +131,11 @@ function ServerRow({
         <Switch
           checked={switchState.checked}
           disabled={switchState.checking}
-          aria-label={`${switchState.checked ? "Disable" : "Enable"} ${server.name} language server`}
+          aria-label={
+            switchState.checked
+              ? t("Disable {name} language server", { name: server.name })
+              : t("Enable {name} language server", { name: server.name })
+          }
           onCheckedChange={(checked) => {
             if (!checked) {
               void setLspActivation(server.id, "dismissed");
@@ -154,6 +158,7 @@ function AddCustomServerDialog({
 }: {
   customServers: LspCustomServer[];
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
@@ -225,24 +230,26 @@ function AddCustomServerDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-6 px-2 text-[11px]">
-          Add custom server
+          {t("Add custom server")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-sm">Custom language server</DialogTitle>
+          <DialogTitle className="text-sm">
+            {t("Custom language server")}
+          </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-2.5">
-          {field("Name", name, setName, "Zig")}
-          {field("Command", command, setCommand, "zls")}
-          {field("Arguments", args, setArgs, "--stdio")}
-          {field("File extensions", extensions, setExtensions, "zig, zon")}
-          {field("LSP language id", languageId, setLanguageId, "zig")}
-          {field("Root markers", rootMarkers, setRootMarkers, "build.zig")}
+          {field(t("Name"), name, setName, "Zig")}
+          {field(t("Command"), command, setCommand, "zls")}
+          {field(t("Arguments"), args, setArgs, "--stdio")}
+          {field(t("File extensions"), extensions, setExtensions, "zig, zon")}
+          {field(t("LSP language id"), languageId, setLanguageId, "zig")}
+          {field(t("Root markers"), rootMarkers, setRootMarkers, "build.zig")}
         </div>
         <DialogFooter>
           <Button size="sm" disabled={!valid} onClick={save}>
-            Add server
+            {t("Add server")}
           </Button>
         </DialogFooter>
       </DialogContent>

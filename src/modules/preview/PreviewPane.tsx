@@ -101,8 +101,9 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
               className="shrink-0"
             />
             <span className="truncate">
-              Many public sites refuse to embed (X-Frame-Options). If the page
-              is blank, open it externally.
+              {t(
+                "Many public sites refuse to embed (X-Frame-Options). If the page is blank, open it externally.",
+              )}
             </span>
           </div>
         ) : null}
@@ -119,9 +120,11 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
             />
             <span
               className="min-w-0 flex-1 truncate"
-              title="Cookie-based sign-in may not work in the sandboxed preview."
+              title={t(
+                "Cookie-based sign-in may not work in the sandboxed preview.",
+              )}
             >
-              Cookie-based sign-in may not work in preview.
+              {t("Cookie-based sign-in may not work in preview.")}
             </span>
             <button
               type="button"
@@ -133,12 +136,12 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
                 size={10}
                 strokeWidth={1.75}
               />
-              Open in browser
+              {t("Open in browser")}
             </button>
             <button
               type="button"
-              aria-label="Dismiss cookie sign-in notice"
-              title="Dismiss"
+              aria-label={t("Dismiss cookie sign-in notice")}
+              title={t("Dismiss")}
               onClick={() => setDismissedCookieOrigin(cookieOrigin)}
               className="flex size-5 shrink-0 items-center justify-center rounded text-sky-700/70 hover:bg-sky-500/15 hover:text-sky-800 dark:text-sky-300/70 dark:hover:text-sky-200"
             >
@@ -192,6 +195,7 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, Props>(
 );
 
 function SuspendedState({ onReload }: { onReload: () => void }) {
+  const t = useT();
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
       <div className="flex size-10 items-center justify-center rounded-2xl border border-border/60 bg-card text-muted-foreground">
@@ -199,10 +203,10 @@ function SuspendedState({ onReload }: { onReload: () => void }) {
       </div>
       <div className="space-y-1">
         <p className="text-[12.5px] font-medium text-foreground">
-          Preview suspended
+          {t("Preview suspended")}
         </p>
         <p className="max-w-xs text-[11px] leading-relaxed text-muted-foreground">
-          Released to free memory after sitting in the background.
+          {t("Released to free memory after sitting in the background.")}
         </p>
       </div>
       <button
@@ -210,13 +214,14 @@ function SuspendedState({ onReload }: { onReload: () => void }) {
         onClick={onReload}
         className="rounded-md border border-border/60 bg-card px-3 py-1 text-[11px] hover:bg-accent/50"
       >
-        Reload
+        {t("Reload")}
       </button>
     </div>
   );
 }
 
 function EmptyState() {
+  const t = useT();
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-6 text-center">
       <div className="flex size-12 items-center justify-center rounded-2xl border border-border/60 bg-card text-muted-foreground">
@@ -224,16 +229,16 @@ function EmptyState() {
       </div>
       <div className="space-y-1.5">
         <p className="text-sm font-medium text-foreground">
-          Nothing to preview yet
+          {t("Nothing to preview yet")}
         </p>
         <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-          Type a URL above, or open the{" "}
+          {t("Type a URL above, or open the")}{" "}
           <span className="rounded bg-muted px-1 py-0.5 font-mono text-[10.5px]">
-            Ports
+            {t("Ports")}
           </span>{" "}
-          dropdown to jump straight to your running dev server. Public sites
-          often block embedding. Open them in your browser via the link icon if
-          you see a blank page.
+          {t(
+            "dropdown to jump straight to your running dev server. Public sites often block embedding. Open them in your browser via the link icon if you see a blank page.",
+          )}
         </p>
       </div>
     </div>

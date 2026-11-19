@@ -1,5 +1,4 @@
-import { type RefObject, useCallback, useEffect, useState } from "react";
-import { homeDir } from "@tauri-apps/api/path";
+import { t } from "@/i18n";
 import { native } from "@/modules/ai/lib/native";
 import type { Tab } from "@/modules/tabs";
 import {
@@ -7,6 +6,8 @@ import {
   LOCAL_WORKSPACE,
   type WorkspaceEnv,
 } from "@/modules/workspace";
+import { homeDir } from "@tauri-apps/api/path";
+import { type RefObject, useCallback, useEffect, useState } from "react";
 
 async function resolveEnvHome(env: WorkspaceEnv): Promise<string> {
   return env.kind === "wsl"
@@ -83,7 +84,7 @@ export function useWorkspaceSwitcher({
       const dirty = tabsRef.current.some((t) => t.kind === "editor" && t.dirty);
       if (dirty) {
         window.alert(
-          "Save or close unsaved editor tabs before switching workspace.",
+          t("Save or close unsaved editor tabs before switching workspace."),
         );
         return false;
       }

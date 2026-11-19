@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { usePreferencesStore } from "@/modules/settings/preferences";
@@ -109,7 +110,7 @@ export function ThemesSection() {
         setThemeId(result.theme.id);
       } catch (e) {
         setImportError(
-          `${file.name}: ${e instanceof Error ? e.message : "failed to read"}`,
+          `${file.name}: ${e instanceof Error ? e.message : t("failed to read")}`,
         );
         return;
       }
@@ -131,7 +132,7 @@ export function ThemesSection() {
     if (!files || files.length === 0) return;
     const file = files[0];
     if (!file.type.startsWith("image/")) {
-      setBgError(`${file.name}: not an image`);
+      setBgError(`${file.name}: ${t("not an image")}`);
       return;
     }
     try {
@@ -141,7 +142,7 @@ export function ThemesSection() {
       await setBackgroundKind("image");
       if (prev && prev !== id) await deleteBgImage(prev).catch(() => undefined);
     } catch (e) {
-      setBgError(e instanceof Error ? e.message : "failed to import image");
+      setBgError(e instanceof Error ? e.message : t("failed to import image"));
     }
   };
 
@@ -244,6 +245,12 @@ export function ThemesSection() {
             const swatchMuted = c?.muted ?? "var(--muted)";
             const selected = themeId === item.id;
             const isCustom = customIds.has(item.id);
+            const description = themeDescription(
+              item.id,
+              item.description,
+              t,
+              isCustom,
+            );
             return (
               <button
                 key={item.id}
@@ -277,9 +284,9 @@ export function ThemesSection() {
                   <span className="truncate text-[12.5px] font-medium">
                     {item.name}
                   </span>
-                  {item.description ? (
+                  {description ? (
                     <span className="truncate text-[11px] text-muted-foreground">
-                      {item.description}
+                      {description}
                     </span>
                   ) : null}
                 </div>
@@ -457,6 +464,56 @@ export function ThemesSection() {
       </div>
     </div>
   );
+}
+
+/**
+ * Built-in theme descriptions are data, but they are also user-facing copy.
+ * Map each one explicitly so the dictionary check sees the literals; custom
+ * themes keep the description their author wrote.
+ */
+function themeDescription(
+  id: string,
+  description: string | undefined,
+  t: TFunction,
+  isCustom: boolean,
+): string | undefined {
+  if (isCustom) return description;
+  switch (id) {
+    case "terax-default":
+      return t("Clean neutral greys with a full-color terminal.");
+    case "xcode":
+      return t("Apple's system colors with a systemBlue accent.");
+    case "claude":
+      return t("Warm clay accent on paper.");
+    case "kanagawa":
+      return t("Inky dark inspired by Hokusai; warm Lotus light.");
+    case "kanagawa-dragon":
+      return t("The muted, near-black Dragon variant of Kanagawa.");
+    case "tokyo-night":
+      return t("Calm, blue-leaning dark theme.");
+    case "catppuccin":
+      return t("Mocha + Latte — soothing pastel.");
+    case "rose-pine":
+      return t("Soho vibes, all-natural pine and rose.");
+    case "everforest":
+      return t("Soft, low-contrast green forest palette.");
+    case "nord":
+      return t("Arctic, north-bluish palette.");
+    case "gruvbox":
+      return t("Warm, earthy retro palette.");
+    case "dracula":
+      return t("The classic high-contrast purple dark theme.");
+    case "solarized":
+      return t("Ethan Schoonover's precision low-glare palette.");
+    case "tide":
+      return t("Deep slate with muted teal.");
+    case "sage":
+      return t("Muted forest green — calm and soft.");
+    case "caffeine":
+      return t("Warm coffee tones — cream and espresso.");
+    default:
+      return description;
+  }
 }
 
 function Label({ children }: { children: React.ReactNode }) {

@@ -30,7 +30,7 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionHeader } from "../components/SectionHeader";
 
 export function ShortcutsSection() {
@@ -40,17 +40,17 @@ export function ShortcutsSection() {
   const [recordingId, setRecordingId] = useState<ShortcutId | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
-  const filteredShortcuts = useMemo(() => {
-    // Filter out internal/non-overridable shortcuts like tab.selectByIndex.
-    const base = SHORTCUTS.filter((s) => s.id !== "tab.selectByIndex");
-    if (!search) return base;
-    const lower = search.toLowerCase();
-    return base.filter(
-      (s) =>
-        t(s.label).toLowerCase().includes(lower) ||
-        t(s.group).toLowerCase().includes(lower),
-    );
-  }, [search, t]);
+  // Rebuilt on every render instead of memoized: translated labels depend on
+  // the locale, which `useT` already subscribes to.
+  const allShortcuts = SHORTCUTS.filter((s) => s.id !== "tab.selectByIndex");
+  const lower = search.toLowerCase();
+  const filteredShortcuts = search
+    ? allShortcuts.filter(
+        (s) =>
+          t(s.label).toLowerCase().includes(lower) ||
+          t(s.group).toLowerCase().includes(lower),
+      )
+    : allShortcuts;
 
   const onRecord = (id: ShortcutId, binding: KeyBinding) => {
     const next = { ...userShortcuts, [id]: [binding] };
@@ -92,7 +92,7 @@ export function ShortcutsSection() {
             size={12}
             strokeWidth={2}
           />
-          Reset All
+          {t("Reset All")}
         </Button>
       </div>
 
@@ -144,19 +144,20 @@ export function ShortcutsSection() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset all shortcuts?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Reset all shortcuts?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revert all your custom keyboard shortcuts to their
-              factory defaults. This action cannot be undone.
+              {t(
+                "This will revert all your custom keyboard shortcuts to their factory defaults. This action cannot be undone.",
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={onResetAll}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Reset All
+              {t("Reset All")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -245,7 +246,7 @@ function ShortcutRow({
                 </KbdGroup>
               ) : (
                 <span className="text-[11px] text-muted-foreground italic">
-                  Unassigned
+                  {t("Unassigned")}
                 </span>
               )}
             </div>
@@ -286,6 +287,7 @@ function Recorder({
   onRecord: (b: KeyBinding) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [_mods, setMods] = useState({
     ctrl: false,
     shift: false,
@@ -353,8 +355,8 @@ function Recorder({
 
   return (
     <div className="flex items-center gap-2 rounded bg-accent/50 px-2 py-1 text-[11px] ring-1 ring-accent">
-      <span className="animate-pulse font-medium">Recording...</span>
-      <span className="text-muted-foreground">(Esc to cancel)</span>
+      <span className="animate-pulse font-medium">{t("Recording...")}</span>
+      <span className="text-muted-foreground">{t("(Esc to cancel)")}</span>
     </div>
   );
 }

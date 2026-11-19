@@ -1,12 +1,14 @@
+import { t } from "@/i18n";
 import {
   convertToModelMessages,
+  type LanguageModel,
   pruneMessages,
   stepCountIs,
   streamText,
-  type LanguageModel,
   type UIMessage,
 } from "ai";
 import {
+  type CustomEndpoint,
   DEFAULT_MODEL_ID,
   endpointIdFromCompatModel,
   getModelContextLimit,
@@ -16,15 +18,14 @@ import {
   MLX_DEFAULT_BASE_URL,
   modelKeepsReasoning,
   OLLAMA_DEFAULT_BASE_URL,
+  type ProviderId,
   providerNeedsKey,
   resolveModel,
   selectSystemPrompt,
-  type CustomEndpoint,
-  type ProviderId,
 } from "../config";
 import { buildTools, type ToolContext } from "../tools/tools";
 import { compactModelMessagesDetailed } from "./compact";
-import type { ProviderKeys, CustomEndpointKeys } from "./keyring";
+import type { CustomEndpointKeys, ProviderKeys } from "./keyring";
 import { prepareAgentPrompt } from "./prompt";
 import { createProxyFetch } from "./proxyFetch";
 
@@ -32,25 +33,41 @@ const localProxyFetch = createProxyFetch({ allowPrivateNetwork: true });
 
 const TOOL_LABELS: Record<string, (input: Record<string, unknown>) => string> =
   {
-    read_file: (i) => `Reading ${shortPath(i.path)}`,
-    list_directory: (i) => `Listing ${shortPath(i.path)}`,
-    grep: (i) => `Grepping ${ellipsize(String(i.pattern ?? ""), 40)}`,
-    glob: (i) => `Globbing ${ellipsize(String(i.pattern ?? ""), 40)}`,
-    edit: (i) => `Editing ${shortPath(i.path)}`,
-    multi_edit: (i) => `Editing ${shortPath(i.path)}`,
-    write_file: (i) => `Writing ${shortPath(i.path)}`,
-    create_directory: (i) => `Creating ${shortPath(i.path)}`,
-    bash_run: (i) => `Running ${ellipsize(String(i.command ?? ""), 60)}`,
+    read_file: (i) => t("Reading {name}", { name: shortPath(i.path) }),
+    list_directory: (i) => t("Listing {name}", { name: shortPath(i.path) }),
+    grep: (i) =>
+      t("Grepping {pattern}", {
+        pattern: ellipsize(String(i.pattern ?? ""), 40),
+      }),
+    glob: (i) =>
+      t("Globbing {pattern}", {
+        pattern: ellipsize(String(i.pattern ?? ""), 40),
+      }),
+    edit: (i) => t("Editing {name}", { name: shortPath(i.path) }),
+    multi_edit: (i) => t("Editing {name}", { name: shortPath(i.path) }),
+    write_file: (i) => t("Writing {name}", { name: shortPath(i.path) }),
+    create_directory: (i) => t("Creating {name}", { name: shortPath(i.path) }),
+    bash_run: (i) =>
+      t("Running {command}", {
+        command: ellipsize(String(i.command ?? ""), 60),
+      }),
     bash_background: (i) =>
-      `Spawning ${ellipsize(String(i.command ?? ""), 60)}`,
-    bash_logs: () => `Reading logs`,
-    bash_list: () => `Listing background processes`,
-    bash_kill: () => `Stopping background process`,
+      t("Spawning {command}", {
+        command: ellipsize(String(i.command ?? ""), 60),
+      }),
+    bash_logs: () => t("Reading logs"),
+    bash_list: () => t("Listing background processes"),
+    bash_kill: () => t("Stopping background process"),
     suggest_command: (i) =>
-      `Suggesting ${ellipsize(String(i.command ?? ""), 60)}`,
+      t("Suggesting {command}", {
+        command: ellipsize(String(i.command ?? ""), 60),
+      }),
     todo_write: (i) =>
-      `Updating plan (${Array.isArray(i.todos) ? i.todos.length : 0} items)`,
-    run_subagent: (i) => `Spawning ${String(i.type ?? "subagent")} subagent`,
+      t("Updating plan ({count} items)", {
+        count: Array.isArray(i.todos) ? i.todos.length : 0,
+      }),
+    run_subagent: (i) =>
+      t("Spawning {name} subagent", { name: String(i.type ?? "subagent") }),
   };
 
 function shortPath(p: unknown): string {
@@ -123,8 +140,9 @@ export async function buildLanguageModel(
       break;
     }
     case "deepseek": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "deepseek",
         baseURL: "https://api.deepseek.com",
@@ -133,8 +151,9 @@ export async function buildLanguageModel(
       break;
     }
     case "mistral": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "mistral",
         baseURL: "https://api.mistral.ai/v1",
@@ -148,8 +167,9 @@ export async function buildLanguageModel(
       break;
     }
     case "openrouter": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
@@ -167,8 +187,9 @@ export async function buildLanguageModel(
           "OpenAI-compatible provider has no base URL. Set it in Settings → Models.",
         );
       }
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "openai-compatible",
         baseURL: compatURL,
@@ -178,8 +199,9 @@ export async function buildLanguageModel(
       break;
     }
     case "lmstudio": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "lmstudio",
         baseURL: lmstudioURL,
@@ -188,8 +210,9 @@ export async function buildLanguageModel(
       break;
     }
     case "mlx": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "mlx",
         baseURL: mlxURL,
@@ -198,8 +221,9 @@ export async function buildLanguageModel(
       break;
     }
     case "ollama": {
-      const { createOpenAICompatible } =
-        await import("@ai-sdk/openai-compatible");
+      const { createOpenAICompatible } = await import(
+        "@ai-sdk/openai-compatible"
+      );
       built = createOpenAICompatible({
         name: "ollama",
         baseURL: ollamaURL,
@@ -240,9 +264,7 @@ export function buildConfiguredLanguageModel(
     const ep = local.customEndpoints?.find((e) => e.id === eid);
     if (!ep) throw new Error(`Custom endpoint not found: ${eid}`);
     if (!ep.modelId.trim()) {
-      throw new Error(
-        `${ep.name}: no model id set. Open Settings → Models.`,
-      );
+      throw new Error(`${ep.name}: no model id set. Open Settings → Models.`);
     }
     return buildLanguageModel(
       "openai-compatible",
@@ -431,10 +453,10 @@ export async function runAgentStream(opts: RunAgentOptions) {
           opts.onStep(
             label
               ? label((last.input ?? {}) as Record<string, unknown>)
-              : `Calling ${last.toolName}`,
+              : t("Calling {name}", { name: last.toolName }),
           );
         } else if (step.text) {
-          opts.onStep("Writing");
+          opts.onStep(t("Writing"));
         }
       }
       if (opts.onUsage && step.usage) {

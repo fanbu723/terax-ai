@@ -1,7 +1,8 @@
+import { useT } from "@/i18n/useT";
 import { cn, isMarkdownPath } from "@/lib/utils";
 import { MarkdownViewToggle } from "@/modules/markdown";
-import { useWindowInactive } from "@/modules/theme/WindowActivityBridge";
 import type { EditorTab, Tab } from "@/modules/tabs";
+import { useWindowInactive } from "@/modules/theme/WindowActivityBridge";
 import { useEffect, useRef } from "react";
 import { EditorPane, type EditorPaneHandle } from "./EditorPane";
 
@@ -90,6 +91,7 @@ export function EditorStack({
   }, [editors]);
 
   const windowInactive = useWindowInactive();
+  const tr = useT();
 
   if (editors.length === 0) return null;
   return (
@@ -111,7 +113,7 @@ export function EditorStack({
                   mode="raw"
                   onChange={(mode) => onSetMarkdownView(t.id, mode)}
                   renderedDisabled={t.dirty}
-                  renderedHint="Save to preview"
+                  renderedHint={tr("Save to preview")}
                 />
               )}
               <EditorPane

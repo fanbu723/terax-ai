@@ -1,15 +1,16 @@
+import { t } from "@/i18n";
 import { nativeDropClientPoint } from "@/lib/nativeDropPoint";
 import { IS_WINDOWS } from "@/lib/platform";
+import {
+  type CopyResult,
+  parentDir,
+  reportCopyFailures,
+} from "@/modules/explorer/lib/clipboardPaste";
+import { currentWorkspaceEnv } from "@/modules/workspace";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { currentWorkspaceEnv } from "@/modules/workspace";
-import {
-  parentDir,
-  reportCopyFailures,
-  type CopyResult,
-} from "@/modules/explorer/lib/clipboardPaste";
 
 type Options = {
   rootPath: string | null;
@@ -83,7 +84,9 @@ export function useExplorerFileDrop({
             workspace,
           })
             .then(reportCopyFailures)
-            .catch((err) => toast.error(`Copy failed: ${String(err)}`))
+            .catch((err) =>
+              toast.error(t("Copy failed: {error}", { error: String(err) })),
+            )
             .finally(() => {
               if (
                 !disposed &&

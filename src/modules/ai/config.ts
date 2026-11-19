@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 export const KEYRING_SERVICE = "terax-ai";
 
 export type ProviderId =
@@ -109,7 +111,8 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     label: "MLX",
     keyringAccount: "",
     keyPrefix: null,
-    consoleUrl: "https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md",
+    consoleUrl:
+      "https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md",
   },
   {
     id: "ollama",
@@ -658,7 +661,7 @@ export function getCompatModelInfo(
 ): ModelInfo {
   const eid = endpointIdFromCompatModel(modelId);
   const ep = endpoints.find((e) => e.id === eid);
-  const name = ep?.name || "Custom endpoint";
+  const name = ep?.name || t("Custom endpoint");
   return {
     id: modelId,
     provider: "openai-compatible",
@@ -666,7 +669,7 @@ export function getCompatModelInfo(
     hint: name,
     description: ep
       ? `${name} — ${ep.baseURL}`
-      : "Custom OpenAI-compatible endpoint",
+      : t("Custom OpenAI-compatible endpoint"),
     capabilities: { intelligence: 3, speed: 3, cost: 3 },
   };
 }

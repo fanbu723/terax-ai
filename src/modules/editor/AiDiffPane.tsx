@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/useT";
 import type { AiDiffStatus } from "@/modules/tabs";
 import { presentableDiff, unifiedMergeView } from "@codemirror/merge";
 import { EditorState, type Extension } from "@codemirror/state";
@@ -70,12 +71,6 @@ const DIFF_THEME = EditorView.theme({
   },
 });
 
-const STATUS_LABEL: Record<AiDiffStatus, string> = {
-  pending: "Pending review",
-  approved: "Applied",
-  rejected: "Rejected",
-};
-
 const STATUS_BADGE: Record<
   AiDiffStatus,
   "outline" | "secondary" | "destructive"
@@ -94,6 +89,7 @@ export function AiDiffPane({
   onAccept,
   onReject,
 }: Props) {
+  const t = useT();
   const cmRef = useRef<ReactCodeMirrorRef>(null);
   const themeExt = useEditorThemeExt();
 
@@ -145,11 +141,15 @@ export function AiDiffPane({
             className="text-[11px] px-2.5 py-2.5"
             variant={STATUS_BADGE[status]}
           >
-            {STATUS_LABEL[status]}
+            {status === "pending"
+              ? t("Pending review")
+              : status === "approved"
+                ? t("Applied")
+                : t("Rejected")}
           </Badge>
           {isNewFile ? (
             <span className="shrink-0 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              New file
+              {t("New file")}
             </span>
           ) : null}
           <span
@@ -176,7 +176,7 @@ export function AiDiffPane({
               className="h-7 gap-1.5"
             >
               <HugeiconsIcon icon={Tick02Icon} size={13} strokeWidth={2} />
-              Accept
+              {t("Accept")}
             </Button>
             <Button
               size="sm"
@@ -185,7 +185,7 @@ export function AiDiffPane({
               className="h-7 gap-1.5"
             >
               <HugeiconsIcon icon={Cancel01Icon} size={13} strokeWidth={2} />
-              Reject
+              {t("Reject")}
             </Button>
           </div>
         ) : null}

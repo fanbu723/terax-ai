@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 const DB_NAME = "terax-bg-images";
 const STORE = "images";
 const VERSION = 1;
@@ -19,7 +21,8 @@ function openDb(): Promise<IDBDatabase> {
       resolve(db);
     };
     req.onerror = () => reject(req.error);
-    req.onblocked = () => reject(new Error("IndexedDB blocked by another tab"));
+    req.onblocked = () =>
+      reject(new Error(t("IndexedDB blocked by another tab")));
   }).catch((e) => {
     if (dbPromise === p) dbPromise = null;
     throw e;
@@ -41,7 +44,9 @@ async function putBgImage(id: string, blob: Blob): Promise<void> {
   } catch (e) {
     if (e instanceof DOMException && e.name === "QuotaExceededError") {
       throw new Error(
-        "Not enough storage to save this image. Remove unused themes or backgrounds and try again.",
+        t(
+          "Not enough storage to save this image. Remove unused themes or backgrounds and try again.",
+        ),
       );
     }
     throw e;
@@ -81,28 +86,40 @@ function formatBytes(n: number): string {
 }
 
 async function isAnimated(file: File): Promise<boolean> {
-  const t = file.type.toLowerCase();
-  if (t === "image/gif" || t === "image/apng") return true;
-  if (t !== "image/webp") return false;
+  const type = file.type.toLowerCase();
+  if (type === "image/gif" || type === "image/apng") return true;
+  if (type !== "image/webp") return false;
   const head = new Uint8Array(
     await file.slice(0, WEBP_SNIFF_BYTES).arrayBuffer(),
   );
   if (
     head.length < 30 ||
-    head[0] !== 0x52 || head[1] !== 0x49 || head[2] !== 0x46 || head[3] !== 0x46 ||
-    head[8] !== 0x57 || head[9] !== 0x45 || head[10] !== 0x42 || head[11] !== 0x50
-  ) return false;
+    head[0] !== 0x52 ||
+    head[1] !== 0x49 ||
+    head[2] !== 0x46 ||
+    head[3] !== 0x46 ||
+    head[8] !== 0x57 ||
+    head[9] !== 0x45 ||
+    head[10] !== 0x42 ||
+    head[11] !== 0x50
+  )
+    return false;
   if (
-    head[12] === 0x56 && head[13] === 0x50 && head[14] === 0x38 && head[15] === 0x58
+    head[12] === 0x56 &&
+    head[13] === 0x50 &&
+    head[14] === 0x38 &&
+    head[15] === 0x58
   ) {
     return (head[20] & 0x02) !== 0;
   }
   return false;
 }
 
-export async function importBgImageFromFile(file: File): Promise<{ id: string; blob: Blob }> {
+export async function importBgImageFromFile(
+  file: File,
+): Promise<{ id: string; blob: Blob }> {
   if (!file.type.startsWith("image/")) {
-    throw new Error("This file isn't an image.");
+    throw new Error(t("This file isn't an image."));
   }
   const id = crypto.randomUUID();
   const animated = await isAnimated(file);
@@ -111,8 +128,14 @@ export async function importBgImageFromFile(file: File): Promise<{ id: string; b
     const limitMb = Math.round(limit / 1024 / 1024);
     throw new Error(
       animated
-        ? `Animated images are limited to ${limitMb} MB to keep things smooth. This one is ${formatBytes(file.size)}.`
-        : `Images are limited to ${limitMb} MB. This one is ${formatBytes(file.size)}.`,
+        ? t(
+            "Animated images are limited to {limit} MB to keep things smooth. This one is {size}.",
+            { limit: limitMb, size: formatBytes(file.size) },
+          )
+        : t("Images are limited to {limit} MB. This one is {size}.", {
+            limit: limitMb,
+            size: formatBytes(file.size),
+          }),
     );
   }
   if (animated) {
@@ -124,7 +147,7 @@ export async function importBgImageFromFile(file: File): Promise<{ id: string; b
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new Error("This image couldn't be decoded. Try a different file.");
+    throw new Error(t("This image couldn't be decoded. Try a different file."));
   }
   const { width, height } = bitmap;
   const scale = Math.min(1, MAX_DIM / Math.max(width, height));

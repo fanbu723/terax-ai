@@ -1,3 +1,5 @@
+import type { TFunction } from "@/i18n";
+import { t } from "@/i18n";
 import {
   CheckListIcon,
   ClaudeIcon,
@@ -69,6 +71,20 @@ export const SLASH_COMMANDS: Record<string, SlashCommandMeta> = {
   },
 };
 
+/** Slash-command labels are English data; translate them at render. */
+export function slashCommandLabel(name: string, translate: TFunction): string {
+  switch (name) {
+    case "init":
+      return translate("Initialize workspace");
+    case "plan":
+      return translate("Plan mode");
+    case "claude-code":
+      return translate("Delegate to Claude Code");
+    default:
+      return SLASH_COMMANDS[name]?.label ?? name;
+  }
+}
+
 export const TERAX_CMD_RE =
   /^<terax-command\s+name="([a-z0-9-]+)"(?:\s+state="([a-z]+)")?\s*\/>(?:\n+|$)/;
 
@@ -85,13 +101,13 @@ export function tryRunSlashCommand(input: string): SlashOutcome {
       const store = usePlanStore.getState();
       if (tail === "off" || tail === "exit") {
         store.disable();
-        return { kind: "handled", toast: "Plan mode off" };
+        return { kind: "handled", toast: t("Plan mode off") };
       }
       store.toggle();
       const nowActive = usePlanStore.getState().active;
       return {
         kind: "handled",
-        toast: nowActive ? "Plan mode on" : "Plan mode off",
+        toast: nowActive ? t("Plan mode on") : t("Plan mode off"),
       };
     }
     case "init": {
@@ -103,7 +119,10 @@ export function tryRunSlashCommand(input: string): SlashOutcome {
     }
     case "claude-code": {
       if (!tail) {
-        return { kind: "handled", toast: "Usage: /claude-code <request>" };
+        return {
+          kind: "handled",
+          toast: t("Usage: /claude-code <request>"),
+        };
       }
       return {
         kind: "send-prompt",

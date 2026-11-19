@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { labelFor } from "./tabLabel";
-import type { TerminalTab } from "./useTabs";
+import type {
+  AiDiffTab,
+  GitCommitFileDiffTab,
+  GitHistoryTab,
+  TerminalTab,
+} from "./useTabs";
 
 function terminalTab(over: Partial<TerminalTab> = {}): TerminalTab {
   return {
@@ -14,6 +19,51 @@ function terminalTab(over: Partial<TerminalTab> = {}): TerminalTab {
   };
 }
 
+function gitHistoryTab(over: Partial<GitHistoryTab> = {}): GitHistoryTab {
+  return {
+    id: 3,
+    kind: "git-history",
+    spaceId: "default",
+    title: "Git History",
+    repoRoot: "/Users/me/repo",
+    ...over,
+  };
+}
+
+function aiDiffTab(over: Partial<AiDiffTab> = {}): AiDiffTab {
+  return {
+    id: 4,
+    kind: "ai-diff",
+    spaceId: "default",
+    title: "index.ts (AI diff)",
+    path: "/Users/me/repo/index.ts",
+    originalContent: "",
+    proposedContent: "",
+    approvalId: "approval",
+    status: "pending",
+    isNewFile: false,
+    ...over,
+  };
+}
+
+function gitCommitFileTab(
+  over: Partial<GitCommitFileDiffTab> = {},
+): GitCommitFileDiffTab {
+  return {
+    id: 5,
+    kind: "git-commit-file",
+    spaceId: "default",
+    title: "index.ts @ a1b2c3d",
+    repoRoot: "/Users/me/repo",
+    sha: "a1b2c3d4",
+    shortSha: "a1b2c3d",
+    subject: "fix: thing",
+    path: "index.ts",
+    originalPath: null,
+    ...over,
+  };
+}
+
 describe("labelFor (terminal tabs)", () => {
   it("derives the label from the last cwd segment", () => {
     expect(labelFor(terminalTab({ cwd: "/Users/me/projects/terax-ai" }))).toBe(
@@ -21,13 +71,30 @@ describe("labelFor (terminal tabs)", () => {
     );
   });
 
-  it("falls back to the title when there is no cwd", () => {
-    expect(labelFor(terminalTab({ title: "private" }))).toBe("private");
+  it("translates the default terminal fallback when there is no cwd", () => {
+    expect(labelFor(terminalTab())).toBe("Terminal");
+  });
+
+  it("translates the Blocks terminal fallback", () => {
+    expect(labelFor(terminalTab({ title: "blocks", blocks: true }))).toBe(
+      "Blocks terminal",
+    );
+  });
+
+  it("translates the private terminal fallback", () => {
+    expect(labelFor(terminalTab({ title: "private", private: true }))).toBe(
+      "Private terminal",
+    );
   });
 
   it("prefers a custom title over the cwd-derived name", () => {
     expect(
-      labelFor(terminalTab({ cwd: "/Users/me/projects/terax-ai", customTitle: "Server" })),
+      labelFor(
+        terminalTab({
+          cwd: "/Users/me/projects/terax-ai",
+          customTitle: "Server",
+        }),
+      ),
     ).toBe("Server");
   });
 
@@ -39,5 +106,32 @@ describe("labelFor (terminal tabs)", () => {
 
   it("handles Windows-style cwd separators", () => {
     expect(labelFor(terminalTab({ cwd: "C:\\Users\\me\\proj" }))).toBe("proj");
+  });
+});
+
+describe("labelFor (stored titles that are UI copy)", () => {
+  it("translates the fixed Git History title", () => {
+    expect(labelFor(gitHistoryTab())).toBe("Git History");
+  });
+
+  it("translates the History · <branch> title and keeps the branch name", () => {
+    expect(labelFor(gitHistoryTab({ title: "History · feat/i18n-zh" }))).toBe(
+      "History · feat/i18n-zh",
+    );
+  });
+
+  it("translates only the AI diff suffix, keeping the file name", () => {
+    expect(labelFor(aiDiffTab())).toBe("index.ts (AI diff)");
+    expect(labelFor(aiDiffTab({ title: "my file.ts (AI diff)" }))).toBe(
+      "my file.ts (AI diff)",
+    );
+  });
+
+  it("leaves a commit title with its sha untouched", () => {
+    expect(labelFor(gitCommitFileTab())).toBe("index.ts @ a1b2c3d");
+  });
+
+  it("leaves user custom titles untouched", () => {
+    expect(labelFor(terminalTab({ customTitle: "Deploy" }))).toBe("Deploy");
   });
 });

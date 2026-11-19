@@ -81,9 +81,16 @@ export const t: TFunction = (source, vars) => {
   return interpolate(translated ?? baseSource(source), vars);
 };
 
+/** Keep `<html lang>` in step so assistive tech and CSS see the UI language. */
+function syncDocumentLanguage(): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = locale;
+}
+
 export async function setLocale(next: Locale): Promise<void> {
   if (next === locale && (next === "en" || dict !== empty)) return;
   dict = next === "en" ? empty : await loaders[next]();
   locale = next;
+  syncDocumentLanguage();
   for (const cb of listeners) cb();
 }

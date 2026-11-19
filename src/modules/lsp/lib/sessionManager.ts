@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 import type { Extension } from "@codemirror/state";
@@ -234,9 +235,10 @@ async function createSession(
   } catch (e) {
     recordCrash(key);
     store.removeSession(key, preset.id);
-    toast.error(`${preset.name} language server failed to start`, {
-      description: String(e),
-    });
+    toast.error(
+      t("{name} language server failed to start", { name: preset.name }),
+      { description: String(e) },
+    );
     return null;
   }
 
@@ -315,9 +317,12 @@ function handleServerExit(key: string, transport: TauriLspTransport): void {
       Array.from({ length: MAX_CRASHES }, () => Date.now()),
     );
     useLspRuntimeStore.getState().setFailed(managed.preset.id, info.reason);
-    toast.error(`${managed.preset.name} language server stopped`, {
-      description: info.reason,
-    });
+    toast.error(
+      t("{name} language server stopped", {
+        name: managed.preset.name,
+      }),
+      { description: info.reason },
+    );
     return;
   }
   const tail = info?.stderrTail;
@@ -326,17 +331,25 @@ function handleServerExit(key: string, transport: TauriLspTransport): void {
       .getState()
       .setFailed(
         managed.preset.id,
-        tail ? tail.slice(-300) : "The server kept crashing.",
+        tail ? tail.slice(-300) : t("The server kept crashing."),
       );
-    toast.error(`${managed.preset.name} language server keeps crashing`, {
-      description: tail ? tail.slice(-300) : "Giving up for this workspace.",
-    });
+    toast.error(
+      t("{name} language server keeps crashing", {
+        name: managed.preset.name,
+      }),
+      {
+        description: tail
+          ? tail.slice(-300)
+          : t("Giving up for this workspace."),
+      },
+    );
     return;
   }
   if (tail) {
-    toast.error(`${managed.preset.name} language server exited`, {
-      description: tail.slice(-300),
-    });
+    toast.error(
+      t("{name} language server exited", { name: managed.preset.name }),
+      { description: tail.slice(-300) },
+    );
   }
   // Delay the re-acquire trigger so an OOM-killed server doesn't respawn
   // into an instant second memory spike.
@@ -375,7 +388,9 @@ function releaseRef(managed: Managed, uri: string): void {
 
 function reportStopFailure(error: unknown): void {
   console.error("[lsp] shutdown failed", error);
-  toast.error("Language server failed to stop", { description: String(error) });
+  toast.error(t("Language server failed to stop"), {
+    description: String(error),
+  });
 }
 
 function closeSession(managed: Managed): Promise<void> {

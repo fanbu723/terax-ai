@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { CheckpointEndpoint, DiffSide, GitDiffScope } from "./types";
 
 const SHORT_SHA = 7;
@@ -8,12 +9,12 @@ function shortRev(rev: string): string {
 
 function checkpointRefLabel(name: string): string {
   const match = /^refs\/terax\/checkpoints\/[^/]+\/(\d+)$/.exec(name);
-  return match ? `turn ${match[1]}` : shortRev(name);
+  return match ? t("turn {count}", { count: match[1] }) : shortRev(name);
 }
 
 function endpointLabel(endpoint: CheckpointEndpoint): string {
   return endpoint.kind === "worktree"
-    ? "working tree"
+    ? t("working tree")
     : checkpointRefLabel(endpoint.name);
 }
 
@@ -21,21 +22,27 @@ function endpointLabel(endpoint: CheckpointEndpoint): string {
 export function scopeLabel(scope: GitDiffScope): string {
   switch (scope.kind) {
     case "uncommitted":
-      return "Uncommitted changes";
+      return t("Uncommitted changes");
     case "staged":
-      return "Staged changes";
+      return t("Staged changes");
     case "unstaged":
-      return "Unstaged changes";
+      return t("Unstaged changes");
     case "range":
-      return `${shortRev(scope.head)} vs ${shortRev(scope.base)}`;
+      return t("{head} vs {base}", {
+        head: shortRev(scope.head),
+        base: shortRev(scope.base),
+      });
     case "commit":
-      return `Commit ${shortRev(scope.sha)}`;
+      return t("Commit {sha}", { sha: shortRev(scope.sha) });
     case "checkpoint": {
       const { from, to } = scope;
       if (to.kind === "worktree" && from.kind === "ref") {
-        return `Since ${checkpointRefLabel(from.name)}`;
+        return t("Since {label}", { label: checkpointRefLabel(from.name) });
       }
-      return `${endpointLabel(from)} to ${endpointLabel(to)}`;
+      return t("{from} to {to}", {
+        from: endpointLabel(from),
+        to: endpointLabel(to),
+      });
     }
   }
 }

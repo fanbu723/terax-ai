@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import type { TFunction } from "@/i18n";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import {
   Cancel01Icon,
@@ -20,20 +22,40 @@ type Props = {
   onRespond: (approved: boolean) => void;
 };
 
-const TOOL_META: Record<string, { label: string; icon: typeof FilePlusIcon }> =
-  {
-    write_file: { label: "Write file", icon: FilePlusIcon },
-    edit: { label: "Edit file", icon: FileEditIcon },
-    multi_edit: { label: "Edit file (batch)", icon: Edit02Icon },
-    create_directory: { label: "Create directory", icon: FolderAddIcon },
-    bash_run: { label: "Run shell command", icon: TerminalIcon },
-    bash_background: { label: "Spawn background process", icon: TerminalIcon },
-  };
+const TOOL_ICON: Record<string, typeof FilePlusIcon> = {
+  write_file: FilePlusIcon,
+  edit: FileEditIcon,
+  multi_edit: Edit02Icon,
+  create_directory: FolderAddIcon,
+  bash_run: TerminalIcon,
+  bash_background: TerminalIcon,
+};
+
+/** Tool names are protocol identifiers; only the card label is copy. */
+function approvalLabel(toolName: string, t: TFunction): string {
+  switch (toolName) {
+    case "write_file":
+      return t("Write file");
+    case "edit":
+      return t("Edit file");
+    case "multi_edit":
+      return t("Edit file (batch)");
+    case "create_directory":
+      return t("Create directory");
+    case "bash_run":
+      return t("Run shell command");
+    case "bash_background":
+      return t("Spawn background process");
+    default:
+      return toolName;
+  }
+}
 
 function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
-  const meta = TOOL_META[toolName];
-  const label = meta?.label ?? toolName;
-  const Icon = meta?.icon ?? ToolsIcon;
+  const t = useT();
+  const meta = TOOL_ICON[toolName];
+  const label = approvalLabel(toolName, t);
+  const Icon = meta ?? ToolsIcon;
   const input = part.input as Record<string, unknown>;
 
   return (
@@ -46,11 +68,9 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
           strokeWidth={1.75}
           className="shrink-0 text-muted-foreground"
         />
-        <span className="text-[12px] font-medium text-foreground">
-          {label}
-        </span>
+        <span className="text-[12px] font-medium text-foreground">{label}</span>
         <span className="ml-auto text-[10px] text-muted-foreground">
-          needs approval
+          {t("needs approval")}
         </span>
       </div>
 
@@ -66,7 +86,7 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
           className="h-7 gap-1.5 text-[11px]"
         >
           <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
-          Deny
+          {t("Deny")}
         </Button>
         <Button
           size="sm"
@@ -75,7 +95,7 @@ function AiToolApprovalImpl({ part, toolName, onRespond }: Props) {
           className="h-7 gap-1.5 text-[11px]"
         >
           <HugeiconsIcon icon={Tick02Icon} size={12} strokeWidth={2} />
-          Approve
+          {t("Approve")}
         </Button>
       </div>
     </div>
@@ -100,6 +120,7 @@ function PreviewBlock({
   toolName: string;
   input: Record<string, unknown>;
 }) {
+  const t = useT();
   if (toolName === "bash_run" || toolName === "bash_background") {
     const cwd = typeof input.cwd === "string" ? input.cwd : null;
     return (
@@ -130,7 +151,8 @@ function PreviewBlock({
       <div className="space-y-0.5 font-mono text-[11px]">
         <div className="text-muted-foreground">{String(input.path ?? "")}</div>
         <div className="text-[10.5px] text-muted-foreground/80">
-          {lines} line{lines === 1 ? "" : "s"} · review in the diff tab
+          {lines === 1 ? t("1 line") : t("{count} lines", { count: lines })} ·{" "}
+          {t("review in the diff tab")}
         </div>
       </div>
     );
@@ -144,11 +166,12 @@ function PreviewBlock({
       <div className="space-y-0.5 font-mono text-[11px]">
         <div className="text-muted-foreground">
           {String(input.path ?? "")}
-          {input.replace_all ? " · replace all" : ""}
+          {input.replace_all ? ` · ${t("replace all")}` : ""}
         </div>
         <div className="text-[10.5px] text-muted-foreground/80">
-          −{removed} / +{added} line{added === 1 && removed === 1 ? "" : "s"} ·
-          review in the diff tab
+          −{removed} / +{added}{" "}
+          {added === 1 && removed === 1 ? t("line") : t("lines")} ·{" "}
+          {t("review in the diff tab")}
         </div>
       </div>
     );
@@ -161,8 +184,10 @@ function PreviewBlock({
       <div className="space-y-0.5 font-mono text-[11px]">
         <div className="text-muted-foreground">{String(input.path ?? "")}</div>
         <div className="text-[10.5px] text-muted-foreground/80">
-          {edits.length} edit{edits.length === 1 ? "" : "s"} · review in the
-          diff tab
+          {edits.length === 1
+            ? t("1 edit")
+            : t("{count} edits", { count: edits.length })}{" "}
+          · {t("review in the diff tab")}
         </div>
       </div>
     );
@@ -180,4 +205,3 @@ function PreviewBlock({
     </pre>
   );
 }
-

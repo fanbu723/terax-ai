@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WindowControls } from "@/components/WindowControls";
-import { useT } from "@/i18n/useT";
+import { useLocale, useT } from "@/i18n/useT";
 import { IS_MAC, USE_CUSTOM_WINDOW_CONTROLS } from "@/lib/platform";
 import type { SettingsTab } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
@@ -93,6 +93,7 @@ function readInitialTab(): SettingsTab {
 
 export function SettingsApp() {
   const [active, setActive] = useState<SettingsTab>(readInitialTab);
+  const locale = useLocale();
   const t = useT();
   const init = usePreferencesStore((s) => s.init);
   const ActiveSection = TABS.find((t) => t.id === active)?.component;
@@ -100,6 +101,17 @@ export function SettingsApp() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // The native title is created in Rust as "Settings"; localize it once the
+  // pack is loaded and keep it in step when the language changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: t is a stable module function; locale is what changes.
+  useEffect(() => {
+    const title = `${t("Settings")} — Terax`;
+    document.title = title;
+    void getCurrentWebviewWindow()
+      .setTitle(title)
+      .catch(() => {});
+  }, [locale]);
 
   useEffect(() => {
     const apply = (detail: string) => {

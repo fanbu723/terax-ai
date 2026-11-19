@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Tab } from "@/modules/tabs";
 import {
   hasLeaf,
@@ -41,7 +42,9 @@ function route(
   const info = tabInfo(ctx.tabs, session.leafId);
   const name = displayAgent(session.agent);
   const heading =
-    kind === "attention" ? `${name} needs your input` : `${name} finished`;
+    kind === "attention"
+      ? t("{name} needs your input", { name })
+      : t("{name} finished", { name });
 
   routeAgentNotification({
     source: "terminal",

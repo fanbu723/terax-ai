@@ -1,3 +1,4 @@
+import { useT } from "@/i18n/useT";
 import { homeRelativePath } from "@/lib/homeRelativePath";
 import { cn } from "@/lib/utils";
 import { AiInputBarConnect } from "@/modules/ai";
@@ -51,6 +52,7 @@ export function WorkspaceInputBar({
   keysLoaded,
   onConnect,
 }: Props) {
+  const t = useT();
   const c = useComposer();
   const { os, shell } = useSystemInfo();
 
@@ -112,7 +114,11 @@ export function WorkspaceInputBar({
         </Chip>
       )}
       {branch && (
-        <Chip tone="violet" icon={GitBranchIcon} title={`Branch: ${branch}`}>
+        <Chip
+          tone="violet"
+          icon={GitBranchIcon}
+          title={t("Branch: {branch}", { branch })}
+        >
           {branch}
         </Chip>
       )}
@@ -156,7 +162,7 @@ export function WorkspaceInputBar({
                       className="text-sm text-muted-foreground hover:text-foreground"
                       onClick={() => focusLeafInput(activeLeafId)}
                     >
-                      Type directly in the terminal
+                      {t("Type directly in the terminal")}
                     </button>
                   ) : (
                     <Suspense fallback={null}>

@@ -1,3 +1,5 @@
+import { useT } from "@/i18n/useT";
+import { useAssetGrant } from "@/lib/useAssetGrant";
 import { endpointIdFromCompatModel } from "@/modules/ai/config";
 import { getCustomEndpointKey, getKey } from "@/modules/ai/lib/keyring";
 import { lspFormatDocument, useLspExtension } from "@/modules/lsp";
@@ -16,7 +18,6 @@ import {
 import { Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
-import { useAssetGrant } from "@/lib/useAssetGrant";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import {
   forwardRef,
@@ -55,10 +56,10 @@ import {
 } from "./lib/externalFormat";
 import { detectIndentUnit } from "./lib/indent";
 import { type LanguageResult, resolveLanguage } from "./lib/languageResolver";
+import { mediaPreviewKind } from "./lib/mediaPreview";
 import { FORCE_READ_LIMIT, useDocument } from "./lib/useDocument";
 import { useEditorThemeExt } from "./lib/useEditorThemeExt";
 import { initVimGlobals, vimHandlersExtension } from "./lib/vim";
-import { mediaPreviewKind } from "./lib/mediaPreview";
 import { MediaPreview } from "./MediaPreview";
 
 initVimGlobals();
@@ -120,12 +121,18 @@ export const EditorPane = memo(
       mediaActive = true,
     } = props;
 
+    const t = useT();
     const { doc, onChange, save, reload, adoptDiskText, openAnyway } =
       useDocument({
         path,
         onDirtyChange,
       });
-    const assetGrant = useAssetGrant((doc.status === "binary" || doc.status === "toolarge") && mediaPreviewKind(path) ? path : null);
+    const assetGrant = useAssetGrant(
+      (doc.status === "binary" || doc.status === "toolarge") &&
+        mediaPreviewKind(path)
+        ? path
+        : null,
+    );
     const reloadRef = useRef(reload);
     reloadRef.current = reload;
     const adoptDiskTextRef = useRef(adoptDiskText);
@@ -206,22 +213,24 @@ export const EditorPane = memo(
           try {
             res = await lspFormatDocument(view);
           } catch (e) {
-            toast.error("Language server format failed", {
+            toast.error(t("Language server format failed"), {
               description: String(e),
             });
           }
           if (res === "unsupported" && !warnedNoFormatRef.current) {
             warnedNoFormatRef.current = true;
-            toast.warning("Format on save skipped", {
-              description:
+            toast.warning(t("Format on save skipped"), {
+              description: t(
                 "The active language server has no formatter. Pick an external one in Settings (Ruff for Python, Prettier, rustfmt, ...).",
+              ),
             });
           }
         } else if (!warnedNoLspRef.current) {
           warnedNoLspRef.current = true;
-          toast.warning("Format on save skipped", {
-            description:
+          toast.warning(t("Format on save skipped"), {
+            description: t(
               "No active language server for this file. Enable one in the statusbar, or pick an external formatter in Settings.",
+            ),
           });
         }
       }
@@ -237,7 +246,9 @@ export const EditorPane = memo(
           prefs.editorCustomFormatCommand,
         );
         if (error) {
-          toast.error(`${formatter} format failed`, { description: error });
+          toast.error(t("{formatter} format failed", { formatter }), {
+            description: error,
+          });
         } else {
           const readBack = await readFileText(pathRef.current);
           if (readBack !== null && view && view.state.doc === docAtSave) {
@@ -249,7 +260,7 @@ export const EditorPane = memo(
         }
       }
       onSavedRef.current?.();
-    }, []);
+    }, [t]);
     const performSaveRef = useRef(performSave);
     performSaveRef.current = performSave;
 
@@ -565,7 +576,7 @@ export const EditorPane = memo(
     if (doc.status === "loading") {
       return (
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-          Loading…
+          {t("Loading…")}
         </div>
       );
     }
@@ -585,11 +596,29 @@ export const EditorPane = memo(
 
       if (isImage || isVideo || isAudio || isPdf) {
         const assetUrl = assetGrant.urlFor(path);
-        if (!assetUrl) return (
-          <div className="p-4 text-xs text-muted-foreground">
-            {assetGrant.error ? <><p role="alert">Media preview unavailable: {assetGrant.error}</p><button type="button" className="mt-2 underline" onClick={assetGrant.retry}>Retry</button></> : "Loading media preview…"}
-          </div>
-        );
+        if (!assetUrl)
+          return (
+            <div className="p-4 text-xs text-muted-foreground">
+              {assetGrant.error ? (
+                <>
+                  <p role="alert">
+                    {t("Media preview unavailable: {error}", {
+                      error: assetGrant.error,
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-2 underline"
+                    onClick={assetGrant.retry}
+                  >
+                    {t("Retry")}
+                  </button>
+                </>
+              ) : (
+                t("Loading media preview…")
+              )}
+            </div>
+          );
         return (
           <div className="flex h-full min-h-0 flex-col items-center justify-center bg-background p-4 overflow-auto">
             {isImage && (
@@ -625,11 +654,13 @@ export const EditorPane = memo(
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
           <div className="text-sm text-foreground">
-            {doc.status === "binary" ? "Binary file" : "File too large"}
+            {doc.status === "binary" ? t("Binary file") : t("File too large")}
           </div>
           <div className="text-xs text-muted-foreground">
             {formatBytes(doc.size)} ·{" "}
-            {canForce ? "syntax features disabled" : "preview not supported"}
+            {canForce
+              ? t("syntax features disabled")
+              : t("preview not supported")}
           </div>
           {canForce && (
             <button
@@ -637,7 +668,7 @@ export const EditorPane = memo(
               onClick={openAnyway}
               className="mt-2 rounded-md border border-border bg-muted/60 px-3 py-1 text-xs text-foreground hover:bg-accent"
             >
-              Open anyway
+              {t("Open anyway")}
             </button>
           )}
         </div>

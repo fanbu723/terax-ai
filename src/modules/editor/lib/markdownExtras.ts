@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import {
   Language,
   LanguageDescription,
@@ -40,27 +41,6 @@ export function markdownCodeLanguages(): LanguageDescription[] {
 }
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+[^\s<>"')\].,;:!?]/g;
-
-const urlMatcher = new MatchDecorator({
-  regexp: URL_RE,
-  decoration: Decoration.mark({
-    class: "cm-md-url",
-    attributes: { title: "Cmd/Ctrl+Click to open" },
-  }),
-});
-
-const urlHighlighter = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-    constructor(view: EditorView) {
-      this.decorations = urlMatcher.createDeco(view);
-    }
-    update(u: ViewUpdate) {
-      this.decorations = urlMatcher.updateDeco(u, this.decorations);
-    }
-  },
-  { decorations: (v) => v.decorations },
-);
 
 function urlAt(view: EditorView, pos: number): string | null {
   const line = view.state.doc.lineAt(pos);
@@ -116,5 +96,26 @@ const mdTheme = EditorView.theme({
 });
 
 export function markdownExtras(): Extension {
+  // Built per call (not at module scope) so the tooltip is translated in the
+  // language that is active when the markdown extension is created.
+  const urlMatcher = new MatchDecorator({
+    regexp: URL_RE,
+    decoration: Decoration.mark({
+      class: "cm-md-url",
+      attributes: { title: t("Cmd/Ctrl+Click to open") },
+    }),
+  });
+  const urlHighlighter = ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      constructor(view: EditorView) {
+        this.decorations = urlMatcher.createDeco(view);
+      }
+      update(u: ViewUpdate) {
+        this.decorations = urlMatcher.updateDeco(u, this.decorations);
+      }
+    },
+    { decorations: (v) => v.decorations },
+  );
   return [urlHighlighter, clickHandlers, mdTheme];
 }

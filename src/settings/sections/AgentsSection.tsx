@@ -14,6 +14,8 @@ import { AGENT_ICONS } from "@/modules/ai/components/AgentSwitcher";
 import {
   type Agent,
   type AgentIconId,
+  agentDisplayDescription,
+  agentDisplayName,
   BUILTIN_AGENTS,
 } from "@/modules/ai/lib/agents";
 import {
@@ -92,7 +94,7 @@ export function AgentsSection() {
             onClick={() =>
               setEditingAgent({
                 id: newAgentId(),
-                name: "New agent",
+                name: t("New agent"),
                 description: "",
                 instructions: "",
                 icon: "spark",
@@ -101,7 +103,7 @@ export function AgentsSection() {
             }
           >
             <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={1.75} />
-            New agent
+            {t("New agent")}
           </Button>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -123,11 +125,11 @@ export function AgentsSection() {
           <div className="flex flex-col">
             <Label>{t("Snippets")}</Label>
             <span className="text-[10.5px] text-muted-foreground">
-              Reusable instructions you can drop into any prompt with{" "}
+              {t("Reusable instructions you can drop into any prompt with")}{" "}
               <code className="rounded bg-muted/50 px-1 font-mono">
                 #handle
               </code>
-              .
+              {t(".")}
             </span>
           </div>
           <Button
@@ -145,14 +147,14 @@ export function AgentsSection() {
             }
           >
             <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={1.75} />
-            New snippet
+            {t("New snippet")}
           </Button>
         </div>
 
         {snippets.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/60 bg-card/30 px-4 py-6 text-center text-[11px] text-muted-foreground">
-            No snippets yet. Create one and insert it with{" "}
-            <code className="font-mono">#handle</code> in the AI input.
+            {t("No snippets yet. Create one and insert it with")}{" "}
+            <code className="font-mono">#handle</code> {t("in the AI input.")}
           </div>
         ) : (
           <ul className="flex flex-col gap-1.5">
@@ -258,15 +260,15 @@ function AgentCard({
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
-            {agent.name}
+            {agentDisplayName(agent, t)}
             {agent.builtIn ? (
               <span className="rounded bg-muted/50 px-1 py-0.5 text-[9px] tracking-wide text-muted-foreground uppercase">
-                Built-in
+                {t("Built-in")}
               </span>
             ) : null}
           </span>
           <span className="line-clamp-2 text-[10.5px] leading-relaxed text-muted-foreground">
-            {agent.description}
+            {agentDisplayDescription(agent, t)}
           </span>
         </div>
       </div>
@@ -284,10 +286,10 @@ function AgentCard({
                 size={10}
                 strokeWidth={2}
               />
-              Active
+              {t("Active")}
             </>
           ) : (
-            "Use agent"
+            t("Use agent")
           )}
         </Button>
         <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -344,7 +346,7 @@ function AgentEditorDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-[14px]">
-            {isNew ? "New agent" : "Edit agent"}
+            {isNew ? t("New agent") : t("Edit agent")}
           </DialogTitle>
         </DialogHeader>
         <div className="-mx-2 max-h-[calc(100vh-14rem)] overflow-y-auto px-2 flex flex-col gap-3">
@@ -410,14 +412,14 @@ function AgentEditorDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             size="sm"
             disabled={!canSave}
             onClick={() => onSave({ ...draft, builtIn: false })}
           >
-            Save
+            {t("Save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -442,11 +444,11 @@ function SnippetEditorDialog({
   if (!draft) return null;
 
   const handleErr = !draft.handle
-    ? "Required."
+    ? t("Required.")
     : !isValidHandle(draft.handle)
-      ? "Lowercase letters, digits, and dashes only."
+      ? t("Lowercase letters, digits, and dashes only.")
       : existing.some((s) => s.id !== draft.id && s.handle === draft.handle)
-        ? "Already in use."
+        ? t("Already in use.")
         : null;
   const canSave =
     !handleErr &&
@@ -459,8 +461,8 @@ function SnippetEditorDialog({
         <DialogHeader>
           <DialogTitle className="text-[14px]">
             {existing.some((s) => s.id === draft.id)
-              ? "Edit snippet"
-              : "New snippet"}
+              ? t("Edit snippet")
+              : t("New snippet")}
           </DialogTitle>
         </DialogHeader>
         <div className="-mx-2 max-h-[calc(100vh-14rem)] overflow-y-auto px-2 flex flex-col gap-3">
@@ -524,10 +526,10 @@ function SnippetEditorDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button size="sm" disabled={!canSave} onClick={() => onSave(draft)}>
-            Save
+            {t("Save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -556,7 +558,7 @@ function CustomInstructionsBlock({ value }: { value: string }) {
         ) : null} */}
         {draft && (
           <Button size="xs" onClick={() => void setCustomInstructions(draft)}>
-            Save
+            {t("Save")}
           </Button>
         )}
       </div>

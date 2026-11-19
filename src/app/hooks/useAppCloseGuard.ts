@@ -1,9 +1,12 @@
-import { toast } from "sonner";
-import { flushPersist } from "@/modules/ai/store/chatStore";
+import { t } from "@/i18n";
 import {
   type FlushResult,
   flushSessionWrites,
 } from "@/modules/ai/lib/sessions";
+import { flushPersist } from "@/modules/ai/store/chatStore";
+import { usePreferencesStore } from "@/modules/settings/preferences";
+import type { Tab } from "@/modules/tabs";
+import { leafHasForegroundProcess, leafIds } from "@/modules/terminal";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   type RefObject,
@@ -12,9 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePreferencesStore } from "@/modules/settings/preferences";
-import type { Tab } from "@/modules/tabs";
-import { leafHasForegroundProcess, leafIds } from "@/modules/terminal";
+import { toast } from "sonner";
 
 async function anyTerminalBusy(tabs: Tab[]): Promise<boolean> {
   const leaves = tabs.flatMap((t) =>
@@ -65,7 +66,7 @@ export function useAppCloseGuard(tabsRef: RefObject<Tab[]>) {
       await getCurrentWindow().close();
     } catch (error) {
       forceClose.current = false;
-      toast.error("Could not close the window", {
+      toast.error(t("Could not close the window"), {
         description: String(error),
       });
     }
@@ -80,14 +81,14 @@ export function useAppCloseGuard(tabsRef: RefObject<Tab[]>) {
       });
       if (closeAfterFlush(flush, warned.current) === "warn") {
         warned.current = true;
-        toast.error("Could not save chat history", {
+        toast.error(t("Could not save chat history"), {
           id: "close-save-failed",
           duration: Number.POSITIVE_INFINITY,
           description: flush.timedOut
-            ? "Saving is taking too long. The latest messages may be lost."
-            : "The latest messages may be lost.",
+            ? t("Saving is taking too long. The latest messages may be lost.")
+            : t("The latest messages may be lost."),
           action: {
-            label: "Close anyway",
+            label: t("Close anyway"),
             onClick: () => void closeWindow(),
           },
         });

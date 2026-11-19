@@ -1,3 +1,4 @@
+import type { TFunction } from "@/i18n";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type AgentIconId =
@@ -78,6 +79,47 @@ export const BUILTIN_AGENTS: readonly Agent[] = [
 - Avoid generic "make it pop" advice. Be specific about what's wrong and why.`,
   },
 ] as const;
+
+/**
+ * Built-in personas ship with English copy as data; custom personas are user
+ * data and pass through untouched. Call these at render time so a language
+ * switch repaints the names and descriptions.
+ */
+export function agentDisplayName(agent: Agent, t: TFunction): string {
+  if (!agent.builtIn) return agent.name;
+  switch (agent.id) {
+    case "builtin:coder":
+      return t("Coder");
+    case "builtin:architect":
+      return t("Architect");
+    case "builtin:reviewer":
+      return t("Code Reviewer");
+    case "builtin:security":
+      return t("Security");
+    case "builtin:designer":
+      return t("Designer");
+    default:
+      return agent.name;
+  }
+}
+
+export function agentDisplayDescription(agent: Agent, t: TFunction): string {
+  if (!agent.builtIn) return agent.description;
+  switch (agent.id) {
+    case "builtin:coder":
+      return t("General-purpose coding assistant. Writes, edits, and runs.");
+    case "builtin:architect":
+      return t("Design and tradeoffs. Plans before code.");
+    case "builtin:reviewer":
+      return t("Reviews diffs for correctness, perf, security.");
+    case "builtin:security":
+      return t("Threat-models changes and flags vulns.");
+    case "builtin:designer":
+      return t("UI/UX critique and refinement.");
+    default:
+      return agent.description;
+  }
+}
 
 const STORE_PATH = "terax-ai-agents.json";
 const KEY_CUSTOM = "customAgents";

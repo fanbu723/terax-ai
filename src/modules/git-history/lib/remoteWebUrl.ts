@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 type RemoteWebHost = "github" | "gitlab" | "bitbucket";
 
 export type RemoteWebInfo = {
@@ -17,7 +19,9 @@ const SUPPORTED_HOSTS: Record<string, RemoteWebHost> = {
   "www.bitbucket.org": "bitbucket",
 };
 
-export function parseRemoteWebUrl(raw: string | null | undefined): RemoteWebInfo | null {
+export function parseRemoteWebUrl(
+  raw: string | null | undefined,
+): RemoteWebInfo | null {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -73,10 +77,10 @@ export function commitWebUrl(info: RemoteWebInfo, sha: string): string {
 export function hostLabel(info: RemoteWebInfo): string {
   switch (info.host) {
     case "github":
-      return "View on GitHub";
+      return t("View on GitHub");
     case "gitlab":
-      return "View on GitLab";
+      return t("View on GitLab");
     case "bitbucket":
-      return "View on Bitbucket";
+      return t("View on Bitbucket");
   }
 }

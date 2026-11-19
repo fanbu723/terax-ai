@@ -8,6 +8,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { TFunction } from "@/i18n";
 import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { FileIcon } from "@/modules/explorer/FileIcon";
@@ -299,8 +300,8 @@ export function CommandPalette({
     <CommandDialog
       open={open}
       onOpenChange={handleOpenChange}
-      title="Command Palette"
-      description="Run a command, switch theme, or search your workspace."
+      title={t("Command Palette")}
+      description={t("Run a command, switch theme, or search your workspace.")}
       className="top-1/2 w-[min(680px,calc(100vw-32px))] -translate-y-1/2"
     >
       <Command
@@ -325,7 +326,7 @@ export function CommandPalette({
             }}
           >
             {inThemes ? (
-              <CommandGroup heading="Themes">
+              <CommandGroup heading={t("Themes")}>
                 <CommandItem
                   value="theme:back"
                   onSelect={exitThemes}
@@ -336,7 +337,7 @@ export function CommandPalette({
                     size={14}
                     strokeWidth={1.75}
                   />
-                  <span>Back</span>
+                  <span>{t("Back")}</span>
                 </CommandItem>
                 {themes.map((t) => (
                   <CommandItem
@@ -356,7 +357,9 @@ export function CommandPalette({
                     ) : null}
                   </CommandItem>
                 ))}
-                {themes.length === 0 ? <StatusItem label="No themes" /> : null}
+                {themes.length === 0 ? (
+                  <StatusItem label={t("No themes")} />
+                ) : null}
               </CommandGroup>
             ) : parsed.mode === "commands" ? (
               rankedCommands.length === 0 ? (
@@ -366,7 +369,10 @@ export function CommandPalette({
                   const rows = rankedCommands.filter((a) => a.group === group);
                   if (rows.length === 0) return null;
                   return (
-                    <CommandGroup key={group} heading={t(group)}>
+                    <CommandGroup
+                      key={group}
+                      heading={commandGroupLabel(group, t)}
+                    >
                       {rows.map((item) => (
                         <ActionItem
                           key={item.id}
@@ -392,17 +398,17 @@ export function CommandPalette({
                 onOpen={openFile}
               />
             ) : parsed.mode === "content" ? (
-              <CommandGroup heading="Contents">
+              <CommandGroup heading={t("Contents")}>
                 {!workspaceRoot ? (
-                  <StatusItem label="No workspace root" />
+                  <StatusItem label={t("No workspace root")} />
                 ) : parsed.term.length < CONTENT_SEARCH_MIN_QUERY ? (
-                  <StatusItem label="Type at least 2 characters" />
+                  <StatusItem label={t("Type at least 2 characters")} />
                 ) : (
                   <AsyncBody
                     loading={content.loading}
                     error={content.error}
                     empty={content.results.length === 0}
-                    emptyLabel="No matches"
+                    emptyLabel={t("No matches")}
                     onRetry={content.retry}
                   >
                     {content.results.map((hit) => (
@@ -428,15 +434,15 @@ export function CommandPalette({
                 )}
               </CommandGroup>
             ) : parsed.mode === "history" ? (
-              <CommandGroup heading="Command history">
+              <CommandGroup heading={t("Command history")}>
                 {!insertCommand ? (
-                  <StatusItem label="Open a terminal to run history" />
+                  <StatusItem label={t("Open a terminal to run history")} />
                 ) : (
                   <AsyncBody
                     loading={history.loading}
                     error={history.error}
                     empty={history.results.length === 0}
-                    emptyLabel="No history"
+                    emptyLabel={t("No history")}
                     onRetry={history.retry}
                   >
                     {history.results.map((cmd) => (
@@ -461,7 +467,7 @@ export function CommandPalette({
                 )}
               </CommandGroup>
             ) : (
-              <CommandGroup heading="Search modes">
+              <CommandGroup heading={t("Search modes")}>
                 {MODE_HINTS.filter((hint) => hint.bases.includes(base)).map(
                   (hint) => (
                     <CommandItem
@@ -473,7 +479,7 @@ export function CommandPalette({
                       <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
                         {hint.sigil}
                       </kbd>
-                      <span>{hint.label}</span>
+                      <span>{modeHintLabel(hint.sigil, hint.label, t)}</span>
                     </CommandItem>
                   ),
                 )}
@@ -524,12 +530,12 @@ function FilesBody({
     );
   }
   return (
-    <CommandGroup heading="Files">
+    <CommandGroup heading={t("Files")}>
       <AsyncBody
         loading={search.loading}
         error={search.error}
         empty={rows.length === 0}
-        emptyLabel="No matching files"
+        emptyLabel={t("No matching files")}
         onRetry={search.retry}
       >
         {rows.map((hit) => (
@@ -607,11 +613,12 @@ function Marked({
 }
 
 function FilesFooter() {
+  const t = useT();
   return (
     <div className="flex h-8 shrink-0 items-center gap-4 border-t border-border/50 px-4 text-[11px] text-muted-foreground">
-      <FooterHint keys="↑↓" label="navigate" />
-      <FooterHint keys="↵" label="open" />
-      <FooterHint keys=":42" label="go to line" />
+      <FooterHint keys="↑↓" label={t("navigate")} />
+      <FooterHint keys="↵" label={t("open")} />
+      <FooterHint keys=":42" label={t("go to line")} />
     </div>
   );
 }
@@ -625,6 +632,44 @@ function FooterHint({ keys, label }: { keys: string; label: string }) {
       {label}
     </span>
   );
+}
+
+function commandGroupLabel(group: string, t: TFunction): string {
+  switch (group) {
+    case "General":
+      return t("General");
+    case "Spaces":
+      return t("Spaces");
+    case "Tabs":
+      return t("Tabs");
+    case "Panes":
+      return t("Panes");
+    case "Git":
+      return t("Git");
+    case "Search":
+      return t("Search");
+    case "View":
+      return t("View");
+    case "AI":
+      // "AI" reads the same in Chinese; wrapping it would need an identical
+      // dictionary value, so the heading keeps the bare term.
+      return group;
+    default:
+      return group;
+  }
+}
+
+function modeHintLabel(sigil: string, fallback: string, t: TFunction): string {
+  switch (sigil) {
+    case "/":
+      return t("Go to file");
+    case ">":
+      return t("Search command history");
+    case "#":
+      return t("Find text in files");
+    default:
+      return fallback;
+  }
 }
 
 function rankCommands(
@@ -702,17 +747,18 @@ function AsyncBody({
   onRetry: () => void;
   children: React.ReactNode;
 }) {
+  const t = useT();
   if (error) {
     return (
       <>
-        <StatusItem label="Search failed" tone="error" />
+        <StatusItem label={t("Search failed")} tone="error" />
         <CommandItem value="retry" onSelect={onRetry} className="text-[12.5px]">
-          <span>Retry</span>
+          <span>{t("Retry")}</span>
         </CommandItem>
       </>
     );
   }
-  if (empty && loading) return <StatusItem label="Searching..." />;
+  if (empty && loading) return <StatusItem label={t("Searching...")} />;
   if (empty) return <StatusItem label={emptyLabel} />;
   return <>{children}</>;
 }

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/useT";
 import { cn } from "@/lib/utils";
 import { AgentIcon } from "@/modules/agents/lib/agentIcon";
 import {
@@ -30,6 +31,7 @@ type Props = {
 const INSTANCE_COUNTS: AgentInstanceCount[] = [1, 2, 3, 4];
 
 export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
+  const t = useT();
   const storedCommands = usePreferencesStore((s) => s.agentLaunchCommands);
   const hydrated = usePreferencesStore((s) => s.hydrated);
   const [agentId, setAgentId] = useState<AgentLauncherId>("claude");
@@ -112,16 +114,16 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
           size="icon-xs"
           className="rounded-md text-muted-foreground"
           onClick={onBack}
-          aria-label="Back to new tab menu"
+          aria-label={t("Back to new tab menu")}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} strokeWidth={1.75} />
         </Button>
         <div className="min-w-0">
           <div className="text-[13px] font-medium text-foreground">
-            Launch agents
+            {t("Launch agents")}
           </div>
           <div className="text-[10px] text-muted-foreground">
-            One workspace, up to four panes
+            {t("One workspace, up to four panes")}
           </div>
         </div>
       </div>
@@ -161,7 +163,7 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
 
       <fieldset className="mt-3">
         <legend className="mb-1.5 text-[11px] font-medium text-muted-foreground">
-          Instances
+          {t("Instances")}
         </legend>
         <div className="grid grid-cols-4 gap-1">
           {INSTANCE_COUNTS.map((count) => (
@@ -169,7 +171,11 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
               key={count}
               type="button"
               disabled={!hydrated}
-              aria-label={`${count} ${count === 1 ? "instance" : "instances"}`}
+              aria-label={
+                count === 1
+                  ? t("1 instance")
+                  : t("{count} instances", { count })
+              }
               aria-pressed={instances === count}
               onClick={() => setInstances(count)}
               className={cn(
@@ -192,7 +198,7 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
             htmlFor="agent-start-command"
             className="text-[11px] font-medium text-muted-foreground"
           >
-            Start command
+            {t("Start command")}
           </label>
           <button
             type="button"
@@ -201,10 +207,12 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
               !hydrated || command === DEFAULT_AGENT_LAUNCH_COMMANDS[agentId]
             }
             className="ml-auto flex items-center gap-1 rounded-md px-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-            title={`Reset to ${launcher.defaultCommand}`}
+            title={t("Reset to {command}", {
+              command: launcher.defaultCommand,
+            })}
           >
             <HugeiconsIcon icon={Refresh01Icon} size={11} strokeWidth={1.75} />
-            Reset
+            {t("Reset")}
           </button>
         </div>
         <Input
@@ -232,7 +240,7 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
           )}
         >
           {validation.ok
-            ? "Aliases and flags are supported."
+            ? t("Aliases and flags are supported.")
             : validation.error}
         </div>
       </div>
@@ -244,7 +252,9 @@ export function AgentLauncherPanel({ onBack, onLaunch }: Props) {
         disabled={!hydrated || !validation.ok}
       >
         <HugeiconsIcon icon={PlayIcon} size={13} strokeWidth={2} />
-        Launch {instances} {instances === 1 ? "agent" : "agents"}
+        {instances === 1
+          ? t("Launch 1 agent")
+          : t("Launch {count} agents", { count: instances })}
       </Button>
     </form>
   );

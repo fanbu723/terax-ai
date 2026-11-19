@@ -52,11 +52,16 @@ export function ProviderKeyCard({
   const submit = async () => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setError("Enter your API key.");
+      setError(t("Enter your API key."));
       return;
     }
     if (provider.keyPrefix && !trimmed.startsWith(provider.keyPrefix)) {
-      setError(`${provider.label} keys start with "${provider.keyPrefix}".`);
+      setError(
+        t('{provider} keys start with "{prefix}".', {
+          provider: provider.label,
+          prefix: provider.keyPrefix,
+        }),
+      );
       return;
     }
     setSaving(true);
@@ -66,7 +71,7 @@ export function ProviderKeyCard({
       setValue("");
       setReveal(false);
     } catch (e) {
-      setError(`Failed to save: ${String(e)}`);
+      setError(t("Failed to save: {error}", { error: String(e) }));
     } finally {
       setSaving(false);
     }
@@ -87,7 +92,7 @@ export function ProviderKeyCard({
               size={9}
               strokeWidth={2}
             />
-            Connected
+            {t("Connected")}
           </Badge>
         ) : null}
         <button
@@ -95,7 +100,7 @@ export function ProviderKeyCard({
           onClick={() => void openUrl(provider.consoleUrl)}
           className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          Get key
+          {t("Get key")}
           <HugeiconsIcon
             icon={ArrowUpRight01Icon}
             size={11}
@@ -126,7 +131,7 @@ export function ProviderKeyCard({
                 placeholder={
                   provider.keyPrefix
                     ? `${provider.keyPrefix}…`
-                    : "Paste API key"
+                    : t("Paste API key")
                 }
                 value={value}
                 disabled={saving}
@@ -152,7 +157,7 @@ export function ProviderKeyCard({
                 onClick={() => setReveal((v) => !v)}
                 tabIndex={-1}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground"
-                aria-label={reveal ? "Hide key" : "Show key"}
+                aria-label={reveal ? t("Hide key") : t("Show key")}
               >
                 <HugeiconsIcon
                   icon={reveal ? ViewOffSlashIcon : ViewIcon}
@@ -168,7 +173,7 @@ export function ProviderKeyCard({
               className="h-8 gap-1 px-3 text-[11px]"
             >
               {saving ? <Spinner className="size-3" /> : null}
-              Save
+              {t("Save")}
             </Button>
           </div>
           {error ? (

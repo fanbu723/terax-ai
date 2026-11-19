@@ -4,8 +4,9 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Toaster } from "@/components/ui/sonner";
-import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { t } from "@/i18n";
+import { useLocale } from "@/i18n/useT";
 import { consumeLaunchFiles, getLaunchDir } from "@/lib/launchDir";
 import { IS_MAC } from "@/lib/platform";
 import { quoteShellArg } from "@/lib/shellQuote";
@@ -83,8 +84,8 @@ import {
 } from "@/modules/spaces";
 import { StatusBar } from "@/modules/statusbar";
 import {
-  TabSwitcherHud,
   type CloseTabsPlan,
+  TabSwitcherHud,
   useTabSwitcher,
   useTabs,
   useWindowTitle,
@@ -107,9 +108,9 @@ import {
   whenSessionReady,
   writeToSession,
 } from "@/modules/terminal";
-import type { TerminalSearchController } from "@/modules/terminal/search/TerminalSearchController";
 import { bindTerminalWindowFocus } from "@/modules/terminal/ghostty/renderScheduling";
 import { subscribeWindowPresentation } from "@/modules/terminal/ghostty/windowPresentation";
+import type { TerminalSearchController } from "@/modules/terminal/search/TerminalSearchController";
 import {
   LivePageResizeBridge,
   ThemeProvider,
@@ -136,18 +137,19 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { CloseDialogs } from "./components/CloseDialogs";
 import {
   TOGGLE_BLOCK_INPUT_EVENT,
   WorkspaceInputBar,
 } from "./components/WorkspaceInputBar";
 import { WorkspaceSurface } from "./components/WorkspaceSurface";
-import { useAppCloseGuard } from "./hooks/useAppCloseGuard";
 import {
   hasOpenPathTab,
   renamedPath,
   spacesEmptiedByTabs,
 } from "./hooks/tabCloseGuards";
+import { useAppCloseGuard } from "./hooks/useAppCloseGuard";
 import { useTabCloseGuards } from "./hooks/useTabCloseGuards";
 import { useWorkspaceSwitcher } from "./hooks/useWorkspaceSwitcher";
 
@@ -668,8 +670,10 @@ export default function App() {
           term.focus();
           return;
         }
-        toast("Terminal is busy", {
-          description: "Open a new tab to go there, or exit the running program.",
+        toast(t("Terminal is busy"), {
+          description: t(
+            "Open a new tab to go there, or exit the running program.",
+          ),
         });
       });
     },
@@ -1270,6 +1274,10 @@ export default function App() {
     />
   );
 
+  // Command titles and disabled reasons are translated strings, so the
+  // memo must recompute when the UI language changes.
+  const locale = useLocale();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: createCommandItems translates its copy, so locale must invalidate this memo.
   const commandPaletteItems = useMemo(
     () =>
       commandPaletteOpen
@@ -1325,6 +1333,7 @@ export default function App() {
       askFromSelection,
       activeSpaceId,
       handleNewSpace,
+      locale,
     ],
   );
 

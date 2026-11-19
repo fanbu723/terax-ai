@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Extension } from "@codemirror/state";
 import {
   extensionMap,
@@ -56,7 +57,7 @@ function match(base: string): {
 }
 
 export function resolveDisplayName(filename: string | null): string {
-  if (!filename) return "Plain Text";
+  if (!filename) return t("Plain Text");
   const base = basenameOf(filename);
   const { def } = match(base);
   if (def) return def.name;
