@@ -3,18 +3,20 @@ name: terax-build
 # Build environment for Terax. The source tree is bind-mounted read/write, but
 # every toolchain directory (node_modules, Cargo target/registry, generated
 # Tauri schemas, pnpm store) is redirected into container volumes, so nothing
-# is compiled or cached on the host. Finished bundles are copied to ./artifacts.
+# is compiled or cached on the host. Finished bundles are copied to ./artifacts
+# (relative to the repository root).
 x-terax-build: &terax-build
   build:
-    context: .
-    dockerfile: Dockerfile
+    # 仓库根为构建上下文；Dockerfile 与 entrypoint 都在 local/ 下。
+    context: ..
+    dockerfile: local/Dockerfile
   image: terax-build:local
   working_dir: /workspace
   init: true
   environment:
     APPIMAGE_EXTRACT_AND_RUN: "1"
   volumes:
-    - .:/workspace
+    - ..:/workspace
     - node_modules:/workspace/node_modules
     # pnpm keeps its content-addressable store next to the workspace, so it is
     # a volume too rather than a dot-directory in the host checkout.

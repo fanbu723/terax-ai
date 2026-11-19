@@ -14,19 +14,19 @@ The Compose file defines one service, `dev`. Every command below builds the imag
 
 | Command | What it does |
 | --- | --- |
-| `docker compose run --rm dev` | Interactive shell with dependencies installed |
-| `docker compose run --rm dev frontend-check` | `pnpm lint`, `pnpm check-types`, `pnpm test` |
-| `docker compose run --rm dev rust-check` | `cargo clippy --all-targets --locked -- -D warnings` and `cargo nextest run --locked` |
-| `docker compose run --rm dev build` | `pnpm build` (tsc + Vite) |
-| `docker compose run --rm dev bundle` | Full Linux bundle: `pnpm tauri build`, then copies `*.deb`, `*.rpm` and `*.AppImage` to `./artifacts` |
-| `docker compose run --rm dev install --force` | Force `pnpm install --frozen-lockfile` |
+| `docker compose -f local/docker-compose.yml run --rm dev` | Interactive shell with dependencies installed |
+| `docker compose -f local/docker-compose.yml run --rm dev frontend-check` | `pnpm lint`, `pnpm check-types`, `pnpm test` |
+| `docker compose -f local/docker-compose.yml run --rm dev rust-check` | `cargo clippy --all-targets --locked -- -D warnings` and `cargo nextest run --locked` |
+| `docker compose -f local/docker-compose.yml run --rm dev build` | `pnpm build` (tsc + Vite) |
+| `docker compose -f local/docker-compose.yml run --rm dev bundle` | Full Linux bundle: `pnpm tauri build`, then copies `*.deb`, `*.rpm` and `*.AppImage` to `./artifacts` |
+| `docker compose -f local/docker-compose.yml run --rm dev install --force` | Force `pnpm install --frozen-lockfile` |
 
 Anything that is not one of the tasks above is executed as-is, so the container also works as a plain command runner:
 
 ```sh
-docker compose run --rm dev cargo test --locked -p terax-control-protocol
-docker compose run --rm dev pnpm vitest run src/modules/terminal
-docker compose run --rm dev bash -lc 'cd src-tauri && cargo fmt --check'
+docker compose -f local/docker-compose.yml run --rm dev cargo test --locked -p terax-control-protocol
+docker compose -f local/docker-compose.yml run --rm dev pnpm vitest run src/modules/terminal
+docker compose -f local/docker-compose.yml run --rm dev bash -lc 'cd src-tauri && cargo fmt --check'
 ```
 
 ## What stays off the host
@@ -44,14 +44,14 @@ The source tree is bind-mounted at `/workspace`, but every toolchain directory i
 
 `./artifacts` is the only path the container writes into the working tree (plus `dist/` when you run the `build` task).
 
-Reset the caches with `docker compose down --volumes`, or a single one with `docker volume rm terax-build_cargo_target`.
+Reset the caches with `docker compose -f local/docker-compose.yml down --volumes`, or a single one with `docker volume rm terax-build_cargo_target`.
 
 ## Platform notes
 
 - On Apple Silicon the image builds `linux/arm64` bundles. For an `x86_64` bundle (what the release publishes for `ubuntu-22.04`), build under emulation:
 
   ```sh
-  DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose run --rm dev bundle
+  DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose -f local/docker-compose.yml run --rm dev bundle
   ```
 
   Emulated builds are substantially slower, especially the LTO release profile.
@@ -65,5 +65,5 @@ Reset the caches with `docker compose down --volumes`, or a single one with `doc
 
 ```sh
 TAURI_SIGNING_PRIVATE_KEY=... TAURI_SIGNING_PRIVATE_KEY_PASSWORD=... \
-  docker compose run --rm -e TAURI_SIGNING_PRIVATE_KEY -e TAURI_SIGNING_PRIVATE_KEY_PASSWORD dev bundle
+  docker compose -f local/docker-compose.yml run --rm -e TAURI_SIGNING_PRIVATE_KEY -e TAURI_SIGNING_PRIVATE_KEY_PASSWORD dev bundle
 ```

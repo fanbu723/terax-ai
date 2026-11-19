@@ -52,7 +52,7 @@ RUN ARCH="$(dpkg --print-architecture)"; \
 
 WORKDIR /workspace
 
-COPY docker/entrypoint.sh /usr/local/bin/terax-entrypoint
+COPY local/docker/entrypoint.sh /usr/local/bin/terax-entrypoint
 RUN chmod 0755 /usr/local/bin/terax-entrypoint
 
 ENTRYPOINT ["/usr/local/bin/terax-entrypoint"]
